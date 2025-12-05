@@ -16,6 +16,8 @@ import 'notification_settings_screen.dart';
 import 'office_locations_screen.dart';
 import 'reports_screen.dart';
 import 'admin_tasks_screen.dart';
+import 'profile_screen.dart';
+import 'user_management_screen.dart';
 
 class WebAdminView extends StatefulWidget {
   const WebAdminView({super.key});
@@ -143,6 +145,44 @@ class _WebAdminViewState extends State<WebAdminView> {
                 ),
               ),
               const SizedBox(height: 24),
+              ListTile(
+                leading:
+                    const Icon(Icons.manage_accounts, color: AppColors.brand),
+                title: Text(
+                  'User Management',
+                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const UserManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.account_circle, color: AppColors.brand),
+                title: Text(
+                  'Profile',
+                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  final currentUser =
+                      Provider.of<AuthProvider>(context, listen: false).user;
+                  if (currentUser != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfileScreen(user: currentUser),
+                      ),
+                    );
+                  }
+                },
+              ),
               Consumer<ThemeProvider>(
                 builder: (context, theme, _) => ListTile(
                   leading: Icon(
@@ -290,6 +330,7 @@ class _WebAdminViewState extends State<WebAdminView> {
                     builder: (_) => const OfficeLocationsScreen()),
               ),
               icon: const Icon(Icons.location_on),
+              tooltip: 'Office Locations',
             ),
             IconButton(
               onPressed: () => Navigator.push(
@@ -298,6 +339,31 @@ class _WebAdminViewState extends State<WebAdminView> {
                     builder: (_) => const NotificationSettingsScreen()),
               ),
               icon: const Icon(Icons.notifications),
+              tooltip: 'Notification Settings',
+            ),
+            IconButton(
+              onPressed: () {
+                final currentUser =
+                    Provider.of<AuthProvider>(context, listen: false).user;
+                if (currentUser != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(user: currentUser),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.account_circle),
+              tooltip: 'Profile',
+            ),
+            IconButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
+              ),
+              icon: const Icon(Icons.manage_accounts),
+              tooltip: 'Manage Users',
             ),
             if (MediaQuery.of(context).size.width < 800)
               IconButton(
