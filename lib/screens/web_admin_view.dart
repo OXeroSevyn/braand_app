@@ -18,6 +18,7 @@ import 'reports_screen.dart';
 import 'admin_tasks_screen.dart';
 import 'profile_screen.dart';
 import 'user_management_screen.dart';
+import 'admin_employee_list_screen.dart';
 
 class WebAdminView extends StatefulWidget {
   const WebAdminView({super.key});
@@ -60,7 +61,7 @@ class _WebAdminViewState extends State<WebAdminView> {
   void _startUnreadCheck() {
     _unreadCheckTimer =
         Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (mounted && _currentIndex != 3) {
+      if (mounted && _currentIndex != 5) {
         try {
           final auth = Provider.of<AuthProvider>(context, listen: false);
           if (auth.user != null) {
@@ -74,7 +75,7 @@ class _WebAdminViewState extends State<WebAdminView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 3) {
+      } else if (mounted && _currentIndex == 5) {
         if (_unreadCount > 0) {
           setState(() {
             _unreadCount = 0;
@@ -237,8 +238,9 @@ class _WebAdminViewState extends State<WebAdminView> {
       _buildDashboard(isDark),
       AttendanceScreen(user: user, isAdminView: true),
       const ReportsScreen(),
-      MessagesScreen(user: user, isAdminView: true),
       const AdminTasksScreen(),
+      const AdminEmployeeListScreen(), // New Employees Tab
+      MessagesScreen(user: user, isAdminView: true),
     ];
 
     return Scaffold(
@@ -262,6 +264,14 @@ class _WebAdminViewState extends State<WebAdminView> {
             icon: Icon(Icons.bar_chart),
             label: 'Reports',
           ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.task_alt),
+            label: 'Tasks',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Employees',
+          ),
           BottomNavigationBarItem(
             icon: _unreadCount > 0
                 ? Badge(
@@ -270,10 +280,6 @@ class _WebAdminViewState extends State<WebAdminView> {
                   )
                 : const Icon(Icons.message),
             label: 'Messages',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.task_alt),
-            label: 'Tasks',
           ),
         ],
       ),

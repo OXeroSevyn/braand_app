@@ -22,21 +22,35 @@ class ReportData {
     final sortedRecords = List<AttendanceRecord>.from(records)
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    for (int i = 0; i < sortedRecords.length - 1; i++) {
-      final current = sortedRecords[i];
-      final next = sortedRecords[i + 1];
+    DateTime? lastStartTime;
 
-      if (current.type == AttendanceType.CLOCK_IN &&
-          next.type == AttendanceType.CLOCK_OUT) {
-        final start = DateTime.fromMillisecondsSinceEpoch(current.timestamp);
-        final end = DateTime.fromMillisecondsSinceEpoch(next.timestamp);
-
-        if (start.day == end.day) {
-          total += end.difference(start);
+    for (var record in sortedRecords) {
+      if (record.type == AttendanceType.CLOCK_IN ||
+          record.type == AttendanceType.BREAK_END) {
+        lastStartTime = DateTime.fromMillisecondsSinceEpoch(record.timestamp);
+      } else if ((record.type == AttendanceType.CLOCK_OUT ||
+              record.type == AttendanceType.BREAK_START) &&
+          lastStartTime != null) {
+        final endTime = DateTime.fromMillisecondsSinceEpoch(record.timestamp);
+        // Only count if within same day (sanity check)
+        if (endTime.day == lastStartTime.day) {
+          total += endTime.difference(lastStartTime);
         }
-        i++;
+        lastStartTime = null;
       }
     }
+
+    // Handle ongoing session (Clocked In but not Clocked Out)
+    // Only if the start time is today, we count it up to "now"
+    if (lastStartTime != null) {
+      final now = DateTime.now();
+      if (lastStartTime.year == now.year &&
+          lastStartTime.month == now.month &&
+          lastStartTime.day == now.day) {
+        total += now.difference(lastStartTime);
+      }
+    }
+
     return total;
   }
 }

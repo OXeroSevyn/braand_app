@@ -120,7 +120,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         return ListTile(
                           title: Text(report.user.name),
                           subtitle: Text(
-                              'Days: ${report.totalDaysPresent} | Hours: ${report.totalHoursWorked.inHours}h ${report.totalHoursWorked.inMinutes % 60}m'),
+                              'Days: ${report.totalDaysPresent} | Time: ${_formatDuration(report.totalHoursWorked)}'),
                           trailing: Text(report.user.department),
                         );
                       },
@@ -173,7 +173,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             _buildStatItem('Employees', '${_reportData.length}'),
             _buildStatItem('Total Days', '$totalDays'),
-            _buildStatItem('Total Hours', '${totalHours.inHours}h'),
+            _buildStatItem('Total Time', _formatDuration(totalHours)),
           ],
         ),
       ),
@@ -184,9 +184,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       children: [
         Text(value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         Text(label, style: const TextStyle(color: Colors.grey)),
       ],
     );
+  }
+
+  String _formatDuration(Duration d) {
+    return '${d.inHours}h ${d.inMinutes % 60}m ${d.inSeconds % 60}s ${d.inMilliseconds % 1000}ms';
   }
 }

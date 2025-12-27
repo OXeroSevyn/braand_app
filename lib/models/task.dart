@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'user.dart';
 
 class Task {
   final String id;
@@ -11,6 +10,7 @@ class Task {
   final DateTime createdAt;
   final TimeOfDay? startTime;
   final TimeOfDay? endTime;
+  final TimeOfDay? actualEndTime;
 
   Task({
     required this.id,
@@ -22,22 +22,37 @@ class Task {
     required this.createdAt,
     this.startTime,
     this.endTime,
+    this.actualEndTime,
   });
 
-  /// Calculate duration in hours (returns null if times are not set)
+  /// Calculate duration in hours
+  /// Returns null if task is not completed or start time is missing
   double? get durationInHours {
-    if (startTime == null || endTime == null) return null;
-    
-    final startMinutes = startTime!.hour * 60 + startTime!.minute;
-    final endMinutes = endTime!.hour * 60 + endTime!.minute;
-    
-    // Handle case where end time is next day
-    int diffMinutes = endMinutes - startMinutes;
-    if (diffMinutes < 0) {
-      diffMinutes += 24 * 60; // Add 24 hours
+    if (startTime == null) return null;
+
+    // If completed and has actual end time, use that
+    if (isCompleted && actualEndTime != null) {
+      final startMinutes = startTime!.hour * 60 + startTime!.minute;
+      final endMinutes = actualEndTime!.hour * 60 + actualEndTime!.minute;
+
+      int diffMinutes = endMinutes - startMinutes;
+      // Handle day crossing if needed (though actual time usually implies same session context for now)
+      if (diffMinutes < 0) diffMinutes += 24 * 60;
+
+      return diffMinutes / 60.0;
     }
-    
-    return diffMinutes / 60.0;
+
+    // If marked completed but no actual end time (legacy), fallback to estimated end time
+    if (isCompleted && endTime != null) {
+      final startMinutes = startTime!.hour * 60 + startTime!.minute;
+      final endMinutes = endTime!.hour * 60 + endTime!.minute;
+      int diffMinutes = endMinutes - startMinutes;
+      if (diffMinutes < 0) diffMinutes += 24 * 60;
+      return diffMinutes / 60.0;
+    }
+
+    // Task is ongoing
+    return null;
   }
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -67,6 +82,7 @@ class Task {
       createdAt: DateTime.parse(json['created_at'] as String),
       startTime: parseTime(json['start_time'] as String?),
       endTime: parseTime(json['end_time'] as String?),
+      actualEndTime: parseTime(json['actual_end_time'] as String?),
     );
   }
 
@@ -79,15 +95,15 @@ class Task {
     return {
       'id': id,
       'user_id': userId,
-      'task_date': DateTime.utc(date.year, date.month, date.day).toIso8601String(),
+      'task_date':
+          DateTime.utc(date.year, date.month, date.day).toIso8601String(),
       'title': title,
       'description': description,
       'is_completed': isCompleted,
       'created_at': createdAt.toIso8601String(),
       'start_time': formatTime(startTime),
       'end_time': formatTime(endTime),
+      'actual_end_time': formatTime(actualEndTime),
     };
   }
 }
-
-

@@ -421,6 +421,7 @@ class SupabaseService {
   Stream<Map<String, dynamic>> subscribeToCustomNotifications() {
     final controller = StreamController<Map<String, dynamic>>();
 
+    debugPrint('🔔 Subscribing to public:custom_notifications');
     _supabase
         .channel('public:custom_notifications')
         .onPostgresChanges(
@@ -428,12 +429,16 @@ class SupabaseService {
           schema: 'public',
           table: 'custom_notifications',
           callback: (payload) {
+            debugPrint(
+                '🔔 Notification Payload received: ${payload.newRecord}');
             if (payload.newRecord != null) {
               controller.add(payload.newRecord!);
             }
           },
         )
-        .subscribe();
+        .subscribe((status, [error]) {
+      debugPrint('🔔 Subscription status: $status ${error ?? ""}');
+    });
 
     return controller.stream;
   }
@@ -646,6 +651,7 @@ class SupabaseService {
       'is_completed': task.isCompleted,
       'start_time': formatTime(task.startTime),
       'end_time': formatTime(task.endTime),
+      'actual_end_time': formatTime(task.actualEndTime),
     });
   }
 
@@ -669,10 +675,17 @@ class SupabaseService {
   }
 
   /// Update the completion status of a task
-  Future<void> updateTaskStatus(String taskId, bool isCompleted) async {
-    await _supabase
-        .from('tasks')
-        .update({'is_completed': isCompleted}).eq('id', taskId);
+  Future<void> updateTaskStatus(String taskId, bool isCompleted,
+      {TimeOfDay? actualEndTime}) async {
+    String? formatTime(TimeOfDay? time) {
+      if (time == null) return null;
+      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
+    }
+
+    await _supabase.from('tasks').update({
+      'is_completed': isCompleted,
+      'actual_end_time': isCompleted ? formatTime(actualEndTime) : null,
+    }).eq('id', taskId);
   }
 
   /// Delete a task

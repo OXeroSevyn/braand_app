@@ -11,6 +11,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/pending_approval_screen.dart';
 import 'services/notification_service.dart';
 import 'services/permissions_service.dart';
+import 'widgets/global_notification_listener.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_credentials.dart';
@@ -89,11 +90,13 @@ class MyApp extends StatelessWidget {
                 ? const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   )
-                : (auth.user != null
-                    ? (auth.isPending
-                        ? const PendingApprovalScreen()
-                        : const DashboardScreen())
-                    : (kIsWeb ? const WebAuthScreen() : const AuthScreen())),
+                : GlobalNotificationListener(
+                    child: auth.user != null
+                        ? (auth.isPending
+                            ? const PendingApprovalScreen()
+                            : const DashboardScreen())
+                        : (kIsWeb ? const WebAuthScreen() : const AuthScreen()),
+                  ),
           );
         },
       ),

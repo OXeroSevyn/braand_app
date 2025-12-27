@@ -18,6 +18,7 @@ import 'reports_screen.dart';
 import 'admin_tasks_screen.dart';
 import 'profile_screen.dart';
 import 'user_management_screen.dart';
+import 'admin_employee_list_screen.dart';
 
 class AdminView extends StatefulWidget {
   const AdminView({super.key});
@@ -63,7 +64,7 @@ class _AdminViewState extends State<AdminView> {
     _unreadCheckTimer = Timer.periodic(const Duration(seconds: 2), (
       timer,
     ) async {
-      if (mounted && _currentIndex != 3) {
+      if (mounted && _currentIndex != 5) {
         // Only check when not on Messages tab
         try {
           final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -78,7 +79,7 @@ class _AdminViewState extends State<AdminView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 3) {
+      } else if (mounted && _currentIndex == 5) {
         // Clear badge when on Messages tab
         if (_unreadCount > 0) {
           setState(() {
@@ -140,7 +141,9 @@ class _AdminViewState extends State<AdminView> {
                   ? const ReportsScreen()
                   : _currentIndex == 3
                       ? const AdminTasksScreen()
-                      : MessagesScreen(user: user, isAdminView: true),
+                      : _currentIndex == 4
+                          ? const AdminEmployeeListScreen()
+                          : MessagesScreen(user: user, isAdminView: true),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -181,6 +184,10 @@ class _AdminViewState extends State<AdminView> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.checklist),
               label: 'TASKS',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: 'EMPLOYEES',
             ),
             BottomNavigationBarItem(
               icon: Stack(

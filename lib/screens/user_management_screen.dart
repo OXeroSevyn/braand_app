@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import '../constants.dart';
 import '../models/user.dart';
 import '../services/supabase_service.dart';
 import '../widgets/neo_card.dart';
 import '../widgets/user_avatar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -125,12 +127,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Implement Invite Dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invite feature coming soon')),
-          );
-        },
+        onPressed: _showInviteDialog,
         backgroundColor: AppColors.brand,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.person_add),
@@ -140,6 +137,147 @@ class _UserManagementScreenState extends State<UserManagementScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _showInviteDialog() async {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    String branch = 'Sales';
+    String role = 'Employee'; // Default role
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text(
+              'INVITE NEW USER',
+              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      hintText: 'John Doe',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email Address',
+                      hintText: 'john@example.com',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: role,
+                    decoration: const InputDecoration(labelText: 'Role'),
+                    items: ['Employee', 'Admin']
+                        .map((r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(r),
+                            ))
+                        .toList(),
+                    onChanged: (value) => setState(() => role = value!),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: branch,
+                    decoration: const InputDecoration(labelText: 'Department'),
+                    items: ['Sales', 'Marketing', 'Development', 'HR', 'Design']
+                        .map((d) => DropdownMenuItem(
+                              value: d,
+                              child: Text(d),
+                            ))
+                        .toList(),
+                    onChanged: (value) => setState(() => branch = value!),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('CANCEL',
+                    style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (nameController.text.isNotEmpty &&
+                      emailController.text.isNotEmpty) {
+                    Navigator.pop(context);
+                    _sendInviteEmail(
+                      name: nameController.text,
+                      email: emailController.text,
+                      role: role,
+                      department: branch,
+                    );
+                  }
+                },
+                child: Text('SEND INVITE',
+                    style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _sendInviteEmail({
+    required String name,
+    required String email,
+    required String role,
+    required String department,
+  }) async {
+    final String subject = 'Invitation to join Braand App as $role';
+    final String body =
+        'Hello $name,\n\nYou have been invited to join the Braand App team as a $role in the $department department.\n\nPlease download the app and sign up with this email: $email\n\nBest regards,\nBraand Team';
+
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      queryParameters: {
+        'subject': subject,
+        'body': body,
+      },
+    );
+
+    try {
+      // Try to launch directly with external application mode
+      // We skip canLaunchUrl because it can be flaky on some Android versions even with queries
+      if (!await launchUrl(emailLaunchUri,
+          mode: LaunchMode.externalApplication)) {
+        throw 'Could not launch email client';
+      }
+    } catch (e) {
+      debugPrint('Error launching email: $e');
+      if (mounted) {
+        await Clipboard.setData(
+            ClipboardData(text: 'Subject: $subject\n\n$body'));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                const Text('Could not open email. Invite copied to clipboard!'),
+            action: SnackBarAction(
+              label: 'OK',
+              onPressed: () {},
+            ),
+          ),
+        );
+
+        // You might need to import 'package:flutter/services.dart'; for Clipboard
+        // But since this is a quick fix, I'll ensure imports are correct in a separate step or just use the tool.
+        // Actually, let's use the Clipboard class correctly.
+      }
+    }
   }
 
   Widget _buildUserList(List<User> users,

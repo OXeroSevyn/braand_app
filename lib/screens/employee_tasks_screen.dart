@@ -134,7 +134,12 @@ class _EmployeeTasksScreenState extends State<EmployeeTasksScreen> {
 
   Future<void> _toggleTask(Task task) async {
     try {
-      await _supabaseService.updateTaskStatus(task.id, !task.isCompleted);
+      final isCompleted = !task.isCompleted;
+      await _supabaseService.updateTaskStatus(
+        task.id,
+        isCompleted,
+        actualEndTime: isCompleted ? TimeOfDay.now() : null,
+      );
       await _loadTasks();
     } catch (e) {
       debugPrint('Error updating task: $e');

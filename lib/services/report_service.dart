@@ -26,11 +26,13 @@ class ReportService {
     for (var report in data) {
       final hours = report.totalHoursWorked.inHours;
       final minutes = report.totalHoursWorked.inMinutes % 60;
+      final seconds = report.totalHoursWorked.inSeconds % 60;
+      final millis = report.totalHoursWorked.inMilliseconds % 1000;
       summarySheet.appendRow([
         TextCellValue(report.user.name),
         TextCellValue(report.user.department),
         TextCellValue(report.totalDaysPresent.toString()),
-        TextCellValue('${hours}h ${minutes}m'),
+        TextCellValue('${hours}h ${minutes}m ${seconds}s ${millis}ms'),
       ]);
     }
 
@@ -41,6 +43,8 @@ class ReportService {
     );
     final grandTotalHours = totalHours.inHours;
     final grandTotalMinutes = totalHours.inMinutes % 60;
+    final grandTotalSeconds = totalHours.inSeconds % 60;
+    final grandTotalMillis = totalHours.inMilliseconds % 1000;
 
     summarySheet.appendRow([]);
     summarySheet.appendRow([
@@ -48,7 +52,8 @@ class ReportService {
       TextCellValue(''),
       TextCellValue(
           data.fold<int>(0, (sum, r) => sum + r.totalDaysPresent).toString()),
-      TextCellValue('${grandTotalHours}h ${grandTotalMinutes}m'),
+      TextCellValue(
+          '${grandTotalHours}h ${grandTotalMinutes}m ${grandTotalSeconds}s ${grandTotalMillis}ms'),
     ]);
 
     // Detailed Records Sheet
@@ -101,8 +106,8 @@ class ReportService {
       TextCellValue('Description'),
       TextCellValue('Start Time'),
       TextCellValue('End Time'),
-      TextCellValue('Duration (Hours)'),
-      TextCellValue('Completed'),
+      TextCellValue('Duration (Actual)'),
+      TextCellValue('Status'),
     ]);
 
     for (var report in data) {
@@ -112,6 +117,23 @@ class ReportService {
           return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
         }
 
+        String durationText;
+        if (task.isCompleted && task.durationInHours != null) {
+          durationText = '${task.durationInHours!.toStringAsFixed(2)} hrs';
+        } else if (task.isCompleted) {
+          durationText = 'Completed (Time N/A)';
+        } else {
+          durationText = 'Ongoing';
+        }
+
+        // Use actual end time if available, otherwise estimated
+        String endTimeText = '';
+        if (task.actualEndTime != null) {
+          endTimeText = formatTime(task.actualEndTime);
+        } else {
+          endTimeText = formatTime(task.endTime);
+        }
+
         sheetObject.appendRow([
           TextCellValue(report.user.name),
           TextCellValue(report.user.department),
@@ -119,11 +141,9 @@ class ReportService {
           TextCellValue(task.title),
           TextCellValue(task.description ?? ''),
           TextCellValue(formatTime(task.startTime)),
-          TextCellValue(formatTime(task.endTime)),
-          TextCellValue(task.durationInHours != null
-              ? task.durationInHours!.toStringAsFixed(2)
-              : ''),
-          TextCellValue(task.isCompleted ? 'Yes' : 'No'),
+          TextCellValue(endTimeText),
+          TextCellValue(durationText),
+          TextCellValue(task.isCompleted ? 'Completed' : 'Ongoing'),
         ]);
       }
     }
@@ -206,21 +226,36 @@ class ReportService {
                 'Title',
                 'Start',
                 'End',
-                'Hours',
-                'Completed'
+                'Duration',
+                'Status'
               ],
               data: data.expand((report) {
                 return report.tasks.map((task) {
+                  String durationText;
+                  if (task.isCompleted && task.durationInHours != null) {
+                    durationText =
+                        '${task.durationInHours!.toStringAsFixed(1)}h';
+                  } else if (task.isCompleted) {
+                    durationText = 'N/A';
+                  } else {
+                    durationText = 'Ongoing';
+                  }
+
+                  String endTimeText = '';
+                  if (task.actualEndTime != null) {
+                    endTimeText = formatTime(task.actualEndTime);
+                  } else {
+                    endTimeText = formatTime(task.endTime);
+                  }
+
                   return [
                     report.user.name,
-                    DateFormat('yyyy-MM-dd').format(task.date),
+                    DateFormat('MM-dd').format(task.date),
                     task.title,
                     formatTime(task.startTime),
-                    formatTime(task.endTime),
-                    task.durationInHours != null
-                        ? task.durationInHours!.toStringAsFixed(1)
-                        : '',
-                    task.isCompleted ? 'Yes' : 'No',
+                    endTimeText,
+                    durationText,
+                    task.isCompleted ? 'Done' : 'In Prog',
                   ];
                 });
               }).toList(),
@@ -307,7 +342,7 @@ class ReportService {
                       fontSize: 12, fontWeight: pw.FontWeight.bold),
                 ),
                 pw.Text(
-                  'Total Hours: ${totalHours.inHours}h ${totalHours.inMinutes % 60}m',
+                  'Total Work Hours: ${totalHours.inHours}h ${totalHours.inMinutes % 60}m ${totalHours.inSeconds % 60}s ${totalHours.inMilliseconds % 1000}ms',
                   style: pw.TextStyle(
                       fontSize: 12, fontWeight: pw.FontWeight.bold),
                 ),
@@ -327,11 +362,13 @@ class ReportService {
               data: data.map((report) {
                 final hours = report.totalHoursWorked.inHours;
                 final minutes = report.totalHoursWorked.inMinutes % 60;
+                final seconds = report.totalHoursWorked.inSeconds % 60;
+                final millis = report.totalHoursWorked.inMilliseconds % 1000;
                 return [
                   report.user.name,
                   report.user.department,
                   report.totalDaysPresent.toString(),
-                  '${hours}h ${minutes}m',
+                  '${hours}h ${minutes}m ${seconds}s ${millis}ms',
                 ];
               }).toList(),
             ),
