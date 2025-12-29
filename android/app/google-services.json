@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "836218835970",
+    "project_id": "braand-app",
+    "storage_bucket": "braand-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:836218835970:android:aabaf8adef3ab8e261031b",
+        "android_client_info": {
+          "package_name": "com.example.braand_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhH-9i05V49l6-VMNgJlx7xOHiFhKcmUg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

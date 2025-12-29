@@ -14,8 +14,8 @@ import 'attendance_screen.dart';
 import 'messages_screen.dart';
 import 'notification_settings_screen.dart';
 import 'office_locations_screen.dart';
-import 'reports_screen.dart';
-import 'admin_tasks_screen.dart';
+import 'office_hours_settings_screen.dart';
+import 'insights_screen.dart';
 import 'profile_screen.dart';
 import 'user_management_screen.dart';
 import 'admin_employee_list_screen.dart';
@@ -64,8 +64,8 @@ class _AdminViewState extends State<AdminView> {
     _unreadCheckTimer = Timer.periodic(const Duration(seconds: 2), (
       timer,
     ) async {
-      if (mounted && _currentIndex != 5) {
-        // Only check when not on Messages tab
+      if (mounted && _currentIndex != 4) {
+        // Only check when not on Messages tab (index 4)
         try {
           final auth = Provider.of<AuthProvider>(context, listen: false);
           if (auth.user != null) {
@@ -79,7 +79,7 @@ class _AdminViewState extends State<AdminView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 5) {
+      } else if (mounted && _currentIndex == 4) {
         // Clear badge when on Messages tab
         if (_unreadCount > 0) {
           setState(() {
@@ -138,12 +138,10 @@ class _AdminViewState extends State<AdminView> {
           : _currentIndex == 1
               ? AttendanceScreen(user: user, isAdminView: true)
               : _currentIndex == 2
-                  ? const ReportsScreen()
+                  ? const InsightsScreen()
                   : _currentIndex == 3
-                      ? const AdminTasksScreen()
-                      : _currentIndex == 4
-                          ? const AdminEmployeeListScreen()
-                          : MessagesScreen(user: user, isAdminView: true),
+                      ? const AdminEmployeeListScreen()
+                      : MessagesScreen(user: user, isAdminView: true),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -179,11 +177,7 @@ class _AdminViewState extends State<AdminView> {
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.analytics),
-              label: 'REPORTS',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.checklist),
-              label: 'TASKS',
+              label: 'INSIGHTS',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.people),
@@ -292,6 +286,19 @@ class _AdminViewState extends State<AdminView> {
                     );
                   },
                   tooltip: 'Office Locations',
+                ),
+                // Office Hours Button
+                IconButton(
+                  icon: const Icon(Icons.access_time, size: 28),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OfficeHoursSettingsScreen(),
+                      ),
+                    );
+                  },
+                  tooltip: 'Office Hours',
                 ),
                 // Notification Settings Button
                 IconButton(

@@ -6,7 +6,8 @@ import '../services/report_service.dart';
 import '../models/report_data.dart';
 
 class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+  final bool isEmbedded;
+  const ReportsScreen({super.key, this.isEmbedded = false});
 
   @override
   State<ReportsScreen> createState() => _ReportsScreenState();
@@ -93,6 +94,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isEmbedded) {
+      return Column(
+        children: [
+          // Embedded Header with Date Picker
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Attendance Analysis',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: _selectDateRange,
+                  tooltip: 'Select Date Range',
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: _buildBody()),
+        ],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Reports'),
@@ -103,57 +130,73 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildSummaryCard(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async =>
-                        await _fetchReport(isAutoRefresh: true),
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: _reportData.length,
-                      itemBuilder: (context, index) {
-                        final report = _reportData[index];
-                        return ListTile(
-                          title: Text(report.user.name),
-                          subtitle: Text(
-                              'Days: ${report.totalDaysPresent} | Time: ${_formatDuration(report.totalHoursWorked)}'),
-                          trailing: Text(report.user.department),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.table_chart),
-                          label: const Text('Export Excel'),
-                          onPressed: () => _reportService.generateAndShareExcel(
-                              _reportData, _startDate, _endDate),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.picture_as_pdf),
-                          label: const Text('Export PDF'),
-                          onPressed: () => _reportService.generateAndSharePdf(
-                              _reportData, _startDate, _endDate),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+      body: _buildBody(),
     );
+  }
+
+  Widget _buildBody() {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              _buildSummaryCard(),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async =>
+                      await _fetchReport(isAutoRefresh: true),
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: _reportData.length,
+                    itemBuilder: (context, index) {
+                      final report = _reportData[index];
+                      return ExpansionTile(
+                        leading: CircleAvatar(
+                          child: Text(report.user.name[0]),
+                        ),
+                        title: Text(report.user.name),
+                        subtitle: Text(
+                            'Days: ${report.totalDaysPresent} | Time: ${_formatDuration(report.totalHoursWorked)}'),
+                        children: report.dailyHours.entries.map((entry) {
+                          return ListTile(
+                            dense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 32.0),
+                            title: Text(entry.key), // Date
+                            trailing:
+                                Text(_formatDuration(entry.value)), // Duration
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.table_chart),
+                        label: const Text('Export Excel'),
+                        onPressed: () => _reportService.generateAndShareExcel(
+                            _reportData, _startDate, _endDate),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.picture_as_pdf),
+                        label: const Text('Export PDF'),
+                        onPressed: () => _reportService.generateAndSharePdf(
+                            _reportData, _startDate, _endDate),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
   }
 
   Widget _buildSummaryCard() {
@@ -172,7 +215,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildStatItem('Employees', '${_reportData.length}'),
-            _buildStatItem('Total Days', '$totalDays'),
+            _buildStatItem('Total Man-Days', '$totalDays'),
             _buildStatItem('Total Time', _formatDuration(totalHours)),
           ],
         ),

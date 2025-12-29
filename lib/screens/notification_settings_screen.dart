@@ -35,8 +35,11 @@ class _NotificationSettingsScreenState
     try {
       final data = await _supabaseService.getNotificationSettings();
       setState(() {
-        _settings =
-            data.map((json) => NotificationSetting.fromJson(json)).toList();
+        // Filter to only show custom_message notifications
+        _settings = data
+            .map((json) => NotificationSetting.fromJson(json))
+            .where((setting) => setting.type == 'custom_message')
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -309,7 +312,7 @@ class _NotificationSettingsScreenState
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Configure notification reminders for employees',
+                            'Configure custom notification messages for employees',
                             style: GoogleFonts.spaceMono(fontSize: 12),
                           ),
                         ),

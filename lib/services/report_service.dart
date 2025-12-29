@@ -19,7 +19,7 @@ class ReportService {
     summarySheet.appendRow([
       TextCellValue('Employee Name'),
       TextCellValue('Department'),
-      TextCellValue('Total Days'),
+      TextCellValue('Total Man-Days'),
       TextCellValue('Total Work Hours'),
     ]);
 
@@ -55,6 +55,29 @@ class ReportService {
       TextCellValue(
           '${grandTotalHours}h ${grandTotalMinutes}m ${grandTotalSeconds}s ${grandTotalMillis}ms'),
     ]);
+
+    // Daily Breakdown Sheet
+    Sheet dailySheet = excel['Daily Breakdown'];
+    dailySheet.appendRow([
+      TextCellValue('Employee Name'),
+      TextCellValue('Department'),
+      TextCellValue('Date'),
+      TextCellValue('Daily Work Duration'),
+    ]);
+
+    for (var report in data) {
+      report.dailyHours.forEach((date, duration) {
+        final hours = duration.inHours;
+        final minutes = duration.inMinutes % 60;
+        final seconds = duration.inSeconds % 60;
+        dailySheet.appendRow([
+          TextCellValue(report.user.name),
+          TextCellValue(report.user.department),
+          TextCellValue(date),
+          TextCellValue('${hours}h ${minutes}m ${seconds}s'),
+        ]);
+      });
+    }
 
     // Detailed Records Sheet
     Sheet detailsSheet = excel['Detailed Records'];
@@ -118,8 +141,10 @@ class ReportService {
         }
 
         String durationText;
-        if (task.isCompleted && task.durationInHours != null) {
-          durationText = '${task.durationInHours!.toStringAsFixed(2)} hrs';
+        if (task.isCompleted && task.duration != null) {
+          final dur = task.duration!;
+          durationText =
+              '${dur.inHours}h ${dur.inMinutes % 60}m ${dur.inSeconds % 60}s';
         } else if (task.isCompleted) {
           durationText = 'Completed (Time N/A)';
         } else {
@@ -232,9 +257,10 @@ class ReportService {
               data: data.expand((report) {
                 return report.tasks.map((task) {
                   String durationText;
-                  if (task.isCompleted && task.durationInHours != null) {
+                  if (task.isCompleted && task.duration != null) {
+                    final dur = task.duration!;
                     durationText =
-                        '${task.durationInHours!.toStringAsFixed(1)}h';
+                        '${dur.inHours}h ${dur.inMinutes % 60}m ${dur.inSeconds % 60}s';
                   } else if (task.isCompleted) {
                     durationText = 'N/A';
                   } else {
@@ -337,7 +363,7 @@ class ReportService {
                       fontSize: 12, fontWeight: pw.FontWeight.bold),
                 ),
                 pw.Text(
-                  'Total Days: $totalDays',
+                  'Total Man-Days: $totalDays',
                   style: pw.TextStyle(
                       fontSize: 12, fontWeight: pw.FontWeight.bold),
                 ),
@@ -358,7 +384,7 @@ class ReportService {
             pw.SizedBox(height: 10),
             pw.Table.fromTextArray(
               context: context,
-              headers: ['Employee', 'Department', 'Days', 'Work Hours'],
+              headers: ['Employee', 'Department', 'Man-Days', 'Work Hours'],
               data: data.map((report) {
                 final hours = report.totalHoursWorked.inHours;
                 final minutes = report.totalHoursWorked.inMinutes % 60;
@@ -373,6 +399,40 @@ class ReportService {
               }).toList(),
             ),
             pw.SizedBox(height: 30),
+
+            // Daily Breakdown
+            pw.Text(
+              'Daily Breakdown',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 10),
+            ...data.map((report) {
+              if (report.dailyHours.isEmpty) return pw.SizedBox();
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(report.user.name,
+                      style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                  pw.SizedBox(height: 5),
+                  pw.Table.fromTextArray(
+                    context: context,
+                    headers: ['Date', 'Duration'],
+                    data: report.dailyHours.entries.map((e) {
+                      final d = e.value;
+                      return [
+                        e.key,
+                        '${d.inHours}h ${d.inMinutes % 60}m ${d.inSeconds % 60}s'
+                      ];
+                    }).toList(),
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    cellAlignment: pw.Alignment.centerLeft,
+                  ),
+                  pw.SizedBox(height: 15),
+                ],
+              );
+            }),
+            pw.SizedBox(height: 20),
 
             // Detailed Records
             pw.Text(

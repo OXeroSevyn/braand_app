@@ -25,34 +25,40 @@ class Task {
     this.actualEndTime,
   });
 
-  /// Calculate duration in hours
+  /// Calculate duration with seconds precision
   /// Returns null if task is not completed or start time is missing
-  double? get durationInHours {
+  Duration? get duration {
     if (startTime == null) return null;
+
+    TimeOfDay? endTimeToUse;
 
     // If completed and has actual end time, use that
     if (isCompleted && actualEndTime != null) {
-      final startMinutes = startTime!.hour * 60 + startTime!.minute;
-      final endMinutes = actualEndTime!.hour * 60 + actualEndTime!.minute;
-
-      int diffMinutes = endMinutes - startMinutes;
-      // Handle day crossing if needed (though actual time usually implies same session context for now)
-      if (diffMinutes < 0) diffMinutes += 24 * 60;
-
-      return diffMinutes / 60.0;
+      endTimeToUse = actualEndTime;
     }
-
     // If marked completed but no actual end time (legacy), fallback to estimated end time
-    if (isCompleted && endTime != null) {
-      final startMinutes = startTime!.hour * 60 + startTime!.minute;
-      final endMinutes = endTime!.hour * 60 + endTime!.minute;
-      int diffMinutes = endMinutes - startMinutes;
-      if (diffMinutes < 0) diffMinutes += 24 * 60;
-      return diffMinutes / 60.0;
+    else if (isCompleted && endTime != null) {
+      endTimeToUse = endTime;
     }
 
-    // Task is ongoing
-    return null;
+    if (endTimeToUse == null) return null;
+
+    final startMinutes = startTime!.hour * 60 + startTime!.minute;
+    final endMinutes = endTimeToUse.hour * 60 + endTimeToUse.minute;
+
+    int diffMinutes = endMinutes - startMinutes;
+    // Handle day crossing if needed (though actual time usually implies same session context for now)
+    if (diffMinutes < 0) diffMinutes += 24 * 60;
+
+    return Duration(minutes: diffMinutes);
+  }
+
+  /// Calculate duration in hours (for backward compatibility)
+  /// Returns null if task is not completed or start time is missing
+  double? get durationInHours {
+    final dur = duration;
+    if (dur == null) return null;
+    return dur.inMinutes / 60.0;
   }
 
   factory Task.fromJson(Map<String, dynamic> json) {

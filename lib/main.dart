@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'constants.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
@@ -12,6 +13,7 @@ import 'screens/pending_approval_screen.dart';
 import 'services/notification_service.dart';
 import 'services/permissions_service.dart';
 import 'widgets/global_notification_listener.dart';
+import 'services/auto_signout_service.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_credentials.dart';
@@ -24,39 +26,54 @@ void main() async {
     anonKey: SupabaseCredentials.anonKey,
   );
 
-  // Skip mobile-only features on web
+  // Start auto sign-out service (runs in background)
   if (!kIsWeb) {
-    // Initialize notification service (mobile only)
+    // Initialize Firebase for Mobile (uses google-services.json)
     try {
-      /*
-      print('🔔 Initializing notification service...');
-      final notificationService = NotificationService();
-      await notificationService.initialize();
-
-      print('📱 Requesting notification permissions...');
-      final permissionGranted = await notificationService.requestPermissions();
-      print('  Permission granted: $permissionGranted');
-
-      // Check exact alarm permission (Android 12+)
-      final canScheduleExact =
-          await notificationService.canScheduleExactAlarms();
-      print('  Can schedule exact alarms: $canScheduleExact');
-
-      if (!canScheduleExact) {
-        print(
-            '⚠️  Warning: Exact alarm permission not granted. Notifications may not work properly.');
-      }
-      */
-
-      // Note: Notifications are now scheduled in AuthProvider after successful login
-      // to ensure we have proper database access permissions.
-    } catch (e, stackTrace) {
-      debugPrint('❌ Error initializing notifications: $e');
-      debugPrint('Stack trace: $stackTrace');
+      await Firebase.initializeApp();
+      debugPrint('🔥 Firebase initialized successfully (Mobile)');
+    } catch (e) {
+      debugPrint('❌ Error initializing Firebase: $e');
     }
 
-    // Request all required permissions on first launch (mobile only)
-    // We don't await this to ensure the app starts quickly.
+    final autoSignOutService = AutoSignOutService();
+    autoSignOutService.start();
+    debugPrint('✅ Auto sign-out service started');
+  } else {
+    // Initialize Firebase for Web (uses explicit config)
+    try {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: "AIzaSyBu3zILgpmzKtPYZ1aBX67D2NTr7ztDyac",
+          authDomain: "braand-app.firebaseapp.com",
+          projectId: "braand-app",
+          storageBucket: "braand-app.firebasestorage.app",
+          messagingSenderId: "836218835970",
+          appId: "1:836218835970:web:75d8253a1c94bfb161031b",
+        ),
+      );
+      debugPrint('🔥 Firebase initialized successfully (Web)');
+    } catch (e) {
+      debugPrint('❌ Error initializing Firebase Web: $e');
+    }
+  }
+
+  // Initialize notification service (runs on both mobile and web now)
+  try {
+    debugPrint('🔔 Initializing notification service...');
+    final notificationService = NotificationService();
+    await notificationService.initialize();
+
+    debugPrint('📱 Requesting notification permissions...');
+    final permissionGranted = await notificationService.requestPermissions();
+    debugPrint('  Permission granted: $permissionGranted');
+  } catch (e, stackTrace) {
+    debugPrint('❌ Error initializing notifications: $e');
+    debugPrint('Stack trace: $stackTrace');
+  }
+
+  // Request all permissions (Mobile only helper)
+  if (!kIsWeb) {
     PermissionsService.requestAll().then((granted) {
       debugPrint('All permissions granted: $granted');
     });

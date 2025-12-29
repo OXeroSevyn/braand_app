@@ -109,6 +109,9 @@ class AuthProvider with ChangeNotifier {
 
       // Start listening for custom notifications
       NotificationService().listenForCustomNotifications(_user!.id);
+
+      // Save FCM Token
+      await _saveFcmToken();
     } on supabase.AuthException catch (e) {
       debugPrint('Auth error loading user: ${e.message}');
     } catch (e) {
@@ -229,5 +232,18 @@ class AuthProvider with ChangeNotifier {
     await _storageService.clearUser();
     _user = null;
     notifyListeners();
+  }
+
+  Future<void> _saveFcmToken() async {
+    if (_user == null) return;
+    try {
+      final token = await NotificationService().getToken();
+      if (token != null) {
+        debugPrint('💾 Saving FCM token for user ${_user!.id}');
+        await _supabaseService.updateFcmToken(_user!.id, token);
+      }
+    } catch (e) {
+      debugPrint('Error saving FCM token in AuthProvider: $e');
+    }
   }
 }

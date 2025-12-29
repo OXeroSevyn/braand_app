@@ -14,6 +14,7 @@ import 'attendance_screen.dart';
 import 'messages_screen.dart';
 import 'notification_settings_screen.dart';
 import 'office_locations_screen.dart';
+import 'office_hours_settings_screen.dart';
 import 'reports_screen.dart';
 import 'admin_tasks_screen.dart';
 import 'profile_screen.dart';
@@ -337,6 +338,15 @@ class _WebAdminViewState extends State<WebAdminView> {
               ),
               icon: const Icon(Icons.location_on),
               tooltip: 'Office Locations',
+            ),
+            IconButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const OfficeHoursSettingsScreen()),
+              ),
+              icon: const Icon(Icons.access_time),
+              tooltip: 'Office Hours',
             ),
             IconButton(
               onPressed: () => Navigator.push(

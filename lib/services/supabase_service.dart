@@ -118,6 +118,12 @@ class SupabaseService {
     }
   }
 
+  Future<void> updateFcmToken(String userId, String token) async {
+    await _supabase
+        .from('profiles')
+        .update({'fcm_token': token}).eq('id', userId);
+  }
+
   Future<void> updateUserProfile({
     required String userId,
     String? name,
@@ -132,7 +138,10 @@ class SupabaseService {
     if (department != null) updates['department'] = department;
     if (bio != null) updates['bio'] = bio;
     if (phone != null) updates['phone'] = phone;
-    if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+    if (avatarUrl != null)
+      updates['avatar_url'] = avatarUrl; // Fix potential bug if this was missed
+
+    // Note: fcm_token is handled separately to avoid overwriting it during profile edits
 
     if (updates.isNotEmpty) {
       await _supabase.from('profiles').update(updates).eq('id', userId);
@@ -713,5 +722,125 @@ class SupabaseService {
     return data
         .map((json) => Task.fromJson(json as Map<String, dynamic>))
         .toList();
+  }
+
+  // --- Office Hours Settings ---
+
+  /// Get the active office hours settings
+  Future<Map<String, dynamic>?> getOfficeHours() async {
+    try {
+      final response = await _supabase
+          .from('office_hours_settings')
+          .select()
+          .eq('is_active', true)
+          .maybeSingle();
+      return response;
+    } catch (e) {
+      debugPrint('❌ Error getting office hours: $e');
+      return null;
+    }
+  }
+
+  /// Update office hours settings
+  Future<void> updateOfficeHours({
+    required TimeOfDay inTime,
+    required TimeOfDay outTime,
+    bool sundayOff = true,
+  }) async {
+    try {
+      // Deactivate all existing settings
+      await _supabase
+          .from('office_hours_settings')
+          .update({'is_active': false}).neq(
+              'id', '00000000-0000-0000-0000-000000000000');
+
+      // Insert new settings
+      await _supabase.from('office_hours_settings').insert({
+        'in_time':
+            '${inTime.hour.toString().padLeft(2, '0')}:${inTime.minute.toString().padLeft(2, '0')}:00',
+        'out_time':
+            '${outTime.hour.toString().padLeft(2, '0')}:${outTime.minute.toString().padLeft(2, '0')}:00',
+        'sunday_off': sundayOff,
+        'is_active': true,
+      });
+
+      debugPrint('✅ Office hours updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating office hours: $e');
+      rethrow;
+    }
+  }
+
+  /// Auto sign-out users who are still clocked in after office hours
+  /// This should be called by a scheduled task/cron job
+  Future<void> autoSignOutUser(String userId) async {
+    try {
+      // Get today's records for the user
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayEnd = todayStart.add(const Duration(days: 1));
+
+      final records = await getUserRecordsForDateRange(
+        userId,
+        todayStart,
+        todayEnd,
+      );
+
+      // Check if there's an unmatched clock-in
+      final clockIns =
+          records.where((r) => r.type == AttendanceType.CLOCK_IN).toList();
+      final clockOuts =
+          records.where((r) => r.type == AttendanceType.CLOCK_OUT).toList();
+
+      if (clockIns.isNotEmpty && clockOuts.length < clockIns.length) {
+        // Create auto sign-out record
+        await _supabase.from('attendance_records').insert({
+          'user_id': userId,
+          'type': 'AttendanceType.CLOCK_OUT',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'biometric_verified': false,
+          'verification_method': 'auto_signout',
+        });
+
+        debugPrint('✅ Auto signed out user: $userId');
+      }
+    } catch (e) {
+      debugPrint('❌ Error auto signing out user: $e');
+    }
+  }
+
+  /// Get all users who are currently clocked in (for auto sign-out check)
+  Future<List<String>> getUsersCurrentlySignedIn() async {
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+
+      // Get all employees
+      final employees = await getAllEmployees();
+      List<String> signedInUsers = [];
+
+      for (var employee in employees) {
+        final records = await getUserRecordsForDateRange(
+          employee.id,
+          todayStart,
+          now,
+        );
+
+        // Check if user has unmatched clock-in
+        final clockIns =
+            records.where((r) => r.type == AttendanceType.CLOCK_IN).toList();
+        final clockOuts =
+            records.where((r) => r.type == AttendanceType.CLOCK_OUT).toList();
+
+        if (clockIns.isNotEmpty && clockOuts.length < clockIns.length) {
+          signedInUsers.add(employee.id);
+        }
+      }
+
+      return signedInUsers;
+    } catch (e) {
+      debugPrint('❌ Error getting signed in users: $e');
+      return [];
+    }
   }
 }

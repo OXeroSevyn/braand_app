@@ -16,9 +16,8 @@ class ReportData {
     return uniqueDays.length;
   }
 
-  Duration get totalHoursWorked {
-    Duration total = Duration.zero;
-
+  Map<String, Duration> get dailyHours {
+    final dailyMap = <String, Duration>{};
     final sortedRecords = List<AttendanceRecord>.from(records)
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
@@ -32,25 +31,39 @@ class ReportData {
               record.type == AttendanceType.BREAK_START) &&
           lastStartTime != null) {
         final endTime = DateTime.fromMillisecondsSinceEpoch(record.timestamp);
+        final dateKey =
+            '${endTime.year}-${endTime.month.toString().padLeft(2, '0')}-${endTime.day.toString().padLeft(2, '0')}';
+
         // Only count if within same day (sanity check)
         if (endTime.day == lastStartTime.day) {
-          total += endTime.difference(lastStartTime);
+          final duration = endTime.difference(lastStartTime);
+          dailyMap[dateKey] = (dailyMap[dateKey] ?? Duration.zero) + duration;
         }
         lastStartTime = null;
       }
     }
 
     // Handle ongoing session (Clocked In but not Clocked Out)
-    // Only if the start time is today, we count it up to "now"
     if (lastStartTime != null) {
       final now = DateTime.now();
       if (lastStartTime.year == now.year &&
           lastStartTime.month == now.month &&
           lastStartTime.day == now.day) {
-        total += now.difference(lastStartTime);
+        final dateKey =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+        final duration = now.difference(lastStartTime);
+        dailyMap[dateKey] = (dailyMap[dateKey] ?? Duration.zero) + duration;
       }
     }
 
+    return dailyMap;
+  }
+
+  Duration get totalHoursWorked {
+    Duration total = Duration.zero;
+    for (var duration in dailyHours.values) {
+      total += duration;
+    }
     return total;
   }
 }

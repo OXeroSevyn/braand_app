@@ -16,6 +16,7 @@ import 'attendance_screen.dart';
 import '../widgets/location_status_widget.dart';
 import 'messages_screen.dart';
 import 'employee_tasks_screen.dart';
+import '../services/office_hours_service.dart';
 import 'profile_screen.dart';
 
 class EmployeeView extends StatefulWidget {
@@ -30,6 +31,7 @@ class _EmployeeViewState extends State<EmployeeView> {
   final SupabaseService _supabaseService = SupabaseService();
   final AttendanceVerificationService _verificationService =
       AttendanceVerificationService();
+  final OfficeHoursService _officeHoursService = OfficeHoursService();
   int _currentIndex = 0;
   int _unreadCount = 0;
   Timer? _refreshTimer;
@@ -124,6 +126,18 @@ class _EmployeeViewState extends State<EmployeeView> {
     setState(() => _loadingType = type);
 
     try {
+      // Step 0: Check office hours (BLOCKING)
+      final officeHoursStatus = await _officeHoursService.checkOfficeHours();
+
+      if (!officeHoursStatus.isWithinHours) {
+        if (mounted) {
+          _showErrorDialog(
+            officeHoursStatus.message ?? 'Outside office hours',
+          );
+        }
+        return;
+      }
+
       // Step 1: Check if device is registered
       final isRegistered =
           await _verificationService.isCurrentDeviceRegistered(widget.user.id);
@@ -535,7 +549,7 @@ class _EmployeeViewState extends State<EmployeeView> {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: isDark ? Colors.white : Colors.black,
+            getTooltipColor: (_) => isDark ? Colors.white : Colors.black,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '${rod.toY.toStringAsFixed(1)}h',

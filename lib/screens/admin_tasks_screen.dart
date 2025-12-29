@@ -9,6 +9,8 @@ import '../models/user.dart';
 import '../services/report_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/neo_card.dart';
+import '../widgets/charts/task_completion_chart.dart';
+import '../widgets/charts/hours_distribution_chart.dart';
 
 class AdminTasksScreen extends StatefulWidget {
   const AdminTasksScreen({super.key});
@@ -21,8 +23,7 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final ReportService _reportService = ReportService();
 
-  DateTime _startDate =
-      DateTime.now().subtract(const Duration(days: 7));
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
   DateTime _endDate = DateTime.now();
 
   bool _isLoading = false;
@@ -102,8 +103,8 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
 
     final List<TaskReportData> result = [];
     for (final entry in byUser.entries) {
-      final user =
-          _employees.firstWhere((u) => u.id == entry.key, orElse: () => User(
+      final user = _employees.firstWhere((u) => u.id == entry.key,
+          orElse: () => User(
                 id: entry.key,
                 email: '',
                 name: 'Unknown',
@@ -123,8 +124,7 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
       );
       return;
     }
-    await _reportService.generateAndShareTaskExcel(
-        data, _startDate, _endDate);
+    await _reportService.generateAndShareTaskExcel(data, _startDate, _endDate);
   }
 
   Future<void> _exportPdf() async {
@@ -135,13 +135,29 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
       );
       return;
     }
-    await _reportService.generateAndShareTaskPdf(
-        data, _startDate, _endDate);
+    await _reportService.generateAndShareTaskPdf(data, _startDate, _endDate);
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Metrics Calculation
+    final completedTasks = _filteredTasks.where((t) => t.isCompleted);
+    final completionRate = _filteredTasks.isEmpty
+        ? 0.0
+        : (completedTasks.length / _filteredTasks.length * 100);
+
+    double totalDurationForAvg = 0;
+    int tasksWithTime = 0;
+    for (var t in completedTasks) {
+      if (t.durationInHours != null) {
+        totalDurationForAvg += t.durationInHours!;
+        tasksWithTime++;
+      }
+    }
+    final avgTime =
+        tasksWithTime == 0 ? 0.0 : totalDurationForAvg / tasksWithTime;
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -176,6 +192,78 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                       color: Colors.grey,
                     ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // SYSTEM ANALYTICS
+            NeoCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.show_chart, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'SYSTEM ANALYTICS',
+                        style: GoogleFonts.spaceMono(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Metrics Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSummaryItem(
+                          'COMPLETION RATE',
+                          '${completionRate.toStringAsFixed(1)}%',
+                          isDark,
+                          isHighlight: true,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSummaryItem(
+                          'AVG TIME/TASK',
+                          '${avgTime.toStringAsFixed(1)}h',
+                          isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Bar Chart
+                  Text(
+                    'Activity Trend (Last 7 Days)',
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TaskCompletionBarChart(
+                      tasks: _filteredTasks,
+                      startDate: _startDate,
+                      endDate: _endDate),
+
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 24),
+
+                  // Pie Chart
+                  Text(
+                    'Work Distribution by Employee',
+                    style: GoogleFonts.spaceMono(
+                        fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  HoursDistributionPieChart(reportData: _buildTaskReportData()),
                 ],
               ),
             ),
@@ -286,7 +374,7 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Summary card with total hours
+            // Summary card (Legacy)
             if (_filteredTasks.isNotEmpty)
               NeoCard(
                 child: Column(
@@ -340,42 +428,6 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                         ),
                       ],
                     ),
-                    if (_selectedEmployee == null) ...[
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Hours by Employee',
-                        style: GoogleFonts.spaceMono(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._buildTaskReportData().map((report) {
-                        if (report.totalHours == 0) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                report.user.name,
-                                style: GoogleFonts.spaceMono(fontSize: 11),
-                              ),
-                              Text(
-                                '${report.totalHours.toStringAsFixed(1)}h',
-                                style: GoogleFonts.spaceMono(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.brand,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
                   ],
                 ),
               ),
@@ -431,18 +483,42 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                             department: '',
                           ),
                         );
+
+                        // Overdue Logic
+                        DateTime? taskEndDateTime;
+                        if (task.endTime != null) {
+                          final now = DateTime.now();
+                          taskEndDateTime = DateTime(
+                            task.date.year,
+                            task.date.month,
+                            task.date.day,
+                            task.endTime!.hour,
+                            task.endTime!.minute,
+                          );
+                        }
+
+                        final isOverdue = !task.isCompleted &&
+                            taskEndDateTime != null &&
+                            DateTime.now().isAfter(taskEndDateTime);
+
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.black
-                                : (task.isCompleted
-                                    ? Colors.green[50]
-                                    : Colors.grey[100]),
+                            color: isOverdue
+                                ? (isDark
+                                    ? Colors.red[900]!.withOpacity(0.3)
+                                    : Colors.red[50])
+                                : isDark
+                                    ? Colors.black
+                                    : (task.isCompleted
+                                        ? Colors.green[50]
+                                        : Colors.grey[100]),
                             border: Border.all(
-                              color: isDark ? Colors.white : Colors.black,
-                              width: 2,
+                              color: isOverdue
+                                  ? Colors.red
+                                  : (isDark ? Colors.white : Colors.black),
+                              width: isOverdue ? 2 : (isDark ? 1 : 2),
                             ),
                           ),
                           child: Row(
@@ -513,7 +589,8 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                                         task.endTime != null) ...[
                                       const SizedBox(height: 4),
                                       Text(
-                                        task.startTime != null && task.endTime != null
+                                        task.startTime != null &&
+                                                task.endTime != null
                                             ? '${task.startTime!.format(context)} - ${task.endTime!.format(context)}'
                                             : task.startTime != null
                                                 ? 'From ${task.startTime!.format(context)}'
@@ -523,10 +600,10 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                                           color: Colors.grey[600],
                                         ),
                                       ),
-                                      if (task.durationInHours != null) ...[
+                                      if (task.duration != null) ...[
                                         const SizedBox(height: 2),
                                         Text(
-                                          '${task.durationInHours!.toStringAsFixed(1)}h',
+                                          '${task.duration!.inHours}h ${task.duration!.inMinutes % 60}m ${task.duration!.inSeconds % 60}s',
                                           style: GoogleFonts.spaceMono(
                                             fontSize: 9,
                                             fontWeight: FontWeight.bold,
@@ -536,6 +613,25 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                                       ],
                                     ],
                                     const SizedBox(height: 4),
+                                    if (isOverdue)
+                                      Container(
+                                        margin:
+                                            const EdgeInsets.only(bottom: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'OVERDUE',
+                                          style: GoogleFonts.spaceMono(
+                                              fontSize: 8,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
@@ -553,9 +649,7 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
                                         ),
                                       ),
                                       child: Text(
-                                        task.isCompleted
-                                            ? 'DONE'
-                                            : 'PENDING',
+                                        task.isCompleted ? 'DONE' : 'PENDING',
                                         style: GoogleFonts.spaceMono(
                                           fontSize: 9,
                                           fontWeight: FontWeight.bold,
@@ -633,7 +727,9 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
       decoration: BoxDecoration(
         color: isDark ? Colors.black : Colors.white,
         border: Border.all(
-          color: isHighlight ? AppColors.brand : (isDark ? Colors.white : Colors.black),
+          color: isHighlight
+              ? AppColors.brand
+              : (isDark ? Colors.white : Colors.black),
           width: isHighlight ? 2 : 1,
         ),
       ),
@@ -662,5 +758,3 @@ class _AdminTasksScreenState extends State<AdminTasksScreen> {
     );
   }
 }
-
-
