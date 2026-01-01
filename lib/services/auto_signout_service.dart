@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import 'office_hours_service.dart';
 
@@ -30,30 +31,67 @@ class AutoSignOutService {
     debugPrint('🕐 Auto sign-out service stopped');
   }
 
-  Future<void> _checkAndAutoSignOut() async {
+  /// Manually trigger check and return detailed report
+  Future<List<String>> triggerNow() async {
+    debugPrint('👉 Manual trigger of auto sign-out check');
+    return await _checkAndAutoSignOut();
+  }
+
+  Future<List<String>> _checkAndAutoSignOut() async {
+    List<String> executionLogs = [];
+    executionLogs.add('🕐 Starting Auto Sign-Out Check at ${DateTime.now()}');
+
     try {
+      // Ensure user is authenticated before checking
+      if (Supabase.instance.client.auth.currentUser == null) {
+        executionLogs.add('❌ ABORTED: No authenticated user found.');
+        return executionLogs;
+      }
+
       final officeHours = await _officeHoursService.checkOfficeHours();
+      executionLogs.add('🏢 Office Hours Status:');
+      executionLogs.add('   - Within Hours: ${officeHours.isWithinHours}');
+      executionLogs.add('   - Is After Hours: ${officeHours.isAfterHours}');
 
-      // If we're outside office hours, auto sign-out all signed-in users
-      if (!officeHours.isWithinHours) {
+      if (officeHours.isBeforeHours)
+        executionLogs.add('   - 🕒 Current time is BEFORE office hours');
+      if (officeHours.isWithinHours)
+        executionLogs.add('   - 🕒 Current time is WITHIN office hours');
+
+      // If we're outside office hours AND strictly AFTER hours, auto sign-out
+      if (!officeHours.isWithinHours && officeHours.isAfterHours) {
         debugPrint(
-            '🕐 Outside office hours, checking for users to auto sign-out');
+            '🕐 After office hours, checking for users to auto sign-out');
+        executionLogs
+            .add('🚀 TRIGGERED: It is strictly after hours. Scanning users...');
 
-        final signedInUsers =
-            await _supabaseService.getUsersCurrentlySignedIn();
+        final result =
+            await _supabaseService.getUsersCurrentlySignedInWithLogs();
+        final signedInUsers = result['users'] as List<String>;
+        final scanLogs = result['logs'] as List<String>;
+        executionLogs.addAll(scanLogs);
 
         if (signedInUsers.isNotEmpty) {
           debugPrint('🕐 Found ${signedInUsers.length} users still signed in');
 
           for (final userId in signedInUsers) {
-            await _supabaseService.autoSignOutUser(userId);
+            final userLogs = await _supabaseService.autoSignOutUser(userId);
+            executionLogs.addAll(userLogs);
           }
 
           debugPrint('✅ Auto signed out ${signedInUsers.length} users');
+          executionLogs.add(
+              '✅ OPERATION COMPLETE: Processed ${signedInUsers.length} users.');
+        } else {
+          executionLogs.add('ℹ️ No users found signed in.');
         }
+      } else {
+        executionLogs.add('⏸️ SKIPPED: Not strictly after hours yet.');
       }
     } catch (e) {
       debugPrint('❌ Error in auto sign-out check: $e');
+      executionLogs.add('❌ EXCEPTION: $e');
     }
+    return executionLogs;
   }
 }

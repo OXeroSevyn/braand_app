@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants.dart';
 import '../services/supabase_service.dart';
+import '../services/auto_signout_service.dart';
 import '../widgets/neo_card.dart';
 
 class OfficeHoursSettingsScreen extends StatefulWidget {
@@ -402,10 +403,103 @@ class _OfficeHoursSettingsScreenState extends State<OfficeHoursSettingsScreen> {
                             ),
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // Manual Trigger Button (Debug)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _triggerAutoSignOut,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                          side: BorderSide(
+                            color: isDark ? Colors.white : Colors.black,
+                            width: 3,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        'TRIGGER AUTO SIGN-OUT NOW (DEBUG)',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
     );
+  }
+
+  Future<void> _triggerAutoSignOut() async {
+    setState(() => _isLoading = true);
+    try {
+      // Import this at the top of the file: import '../services/auto_signout_service.dart';
+      final service = AutoSignOutService();
+      final logs = await service.triggerNow(); // We will add this method next
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Auto Sign-Out Report'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: logs.map((log) {
+                    Color color = Colors.black;
+                    if (log.contains('❌') || log.contains('⚠️'))
+                      color = Colors.red;
+                    if (log.contains('✅') || log.contains('🟢'))
+                      color = Colors.green;
+                    if (log.contains('🚀')) color = Colors.blue;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        log,
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 12,
+                          color: color,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CLOSE'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error triggering: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Widget _buildTimeSelector({

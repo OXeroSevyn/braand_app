@@ -8,12 +8,15 @@ import '../services/notification_service.dart';
 class AuthProvider with ChangeNotifier {
   User? _user;
   bool _isLoading = true;
+  bool _shouldShowPasswordReset = false;
   final StorageService _storageService = StorageService();
   final SupabaseService _supabaseService = SupabaseService();
   final supabase.SupabaseClient _supabase = supabase.Supabase.instance.client;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
+  bool get shouldShowPasswordReset => _shouldShowPasswordReset;
+
   bool get isPending {
     if (_user?.role == 'Admin') return false;
     if (_user?.email == 'subhamdey.one@gmail.com') return false; // Dev bypass
@@ -26,10 +29,23 @@ class AuthProvider with ChangeNotifier {
     _init();
   }
 
+  void clearPasswordResetState() {
+    _shouldShowPasswordReset = false;
+    notifyListeners();
+  }
+
   Future<void> _init() async {
     // Listen to auth state changes
     _supabase.auth.onAuthStateChange.listen((data) {
       final session = data.session;
+      final event = data.event;
+
+      if (event == supabase.AuthChangeEvent.passwordRecovery) {
+        debugPrint('🔐 Password recovery event detected!');
+        _shouldShowPasswordReset = true;
+        notifyListeners();
+      }
+
       if (session != null) {
         _loadUserFromSession(session.user);
       } else {
@@ -201,6 +217,21 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return 'An unexpected error occurred: $e';
+    }
+  }
+
+  Future<String?> resetPassword(String email) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _supabaseService.sendPasswordResetEmail(email);
+      return null;
+    } catch (e) {
+      return 'Failed to send password reset email: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

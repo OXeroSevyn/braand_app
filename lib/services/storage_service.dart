@@ -39,14 +39,23 @@ class StorageService {
         'dark'; // Default to false (light) if null, or true if 'dark'
   }
 
+  Future<void> saveSnowfall(bool isEnabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_snowfall_enabled', isEnabled);
+  }
+
+  Future<bool> getSnowfall() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('is_snowfall_enabled') ?? true; // Default to true
+  }
+
   Future<void> saveRecord(AttendanceRecord record) async {
     final prefs = await SharedPreferences.getInstance();
     final records = await getRecords();
     records.insert(0, record); // Add to beginning
 
-    final List<String> recordsJson = records
-        .map((r) => jsonEncode(r.toJson()))
-        .toList();
+    final List<String> recordsJson =
+        records.map((r) => jsonEncode(r.toJson())).toList();
     await prefs.setStringList(KEY_RECORDS, recordsJson);
   }
 

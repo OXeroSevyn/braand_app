@@ -18,6 +18,7 @@ import 'messages_screen.dart';
 import 'employee_tasks_screen.dart';
 import '../services/office_hours_service.dart';
 import 'profile_screen.dart';
+import 'notice_board_screen.dart';
 
 class EmployeeView extends StatefulWidget {
   final User user;
@@ -65,7 +66,7 @@ class _EmployeeViewState extends State<EmployeeView> {
   void _startUnreadCheck() {
     _unreadCheckTimer =
         Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (mounted && _currentIndex != 3) {
+      if (mounted && _currentIndex != 4) {
         // Only check when not on Messages tab
         try {
           final count = await _supabaseService.getUnreadCount(widget.user.id);
@@ -77,7 +78,7 @@ class _EmployeeViewState extends State<EmployeeView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 3) {
+      } else if (mounted && _currentIndex == 4) {
         // Clear badge when on Messages tab
         if (_unreadCount > 0) {
           setState(() {
@@ -284,6 +285,7 @@ class _EmployeeViewState extends State<EmployeeView> {
           _buildDashboard(),
           AttendanceScreen(user: widget.user),
           EmployeeTasksScreen(user: widget.user),
+          NoticeBoardScreen(user: widget.user),
           MessagesScreen(user: widget.user),
           ProfileScreen(user: widget.user),
         ],
@@ -324,6 +326,10 @@ class _EmployeeViewState extends State<EmployeeView> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.checklist),
               label: 'TASKS',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.assignment),
+              label: 'NOTICES',
             ),
             BottomNavigationBarItem(
               icon: Stack(

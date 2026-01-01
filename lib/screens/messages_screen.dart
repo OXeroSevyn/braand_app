@@ -33,7 +33,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   Timer? _refreshTimer;
-  String? _employeeAdminId; // Store admin ID for employee
 
   @override
   void initState() {
@@ -64,13 +63,26 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
     try {
       if (widget.isAdminView) {
-        // Admin: load all employees
+        // Admin: load all active employees
         final users = await _supabaseService.getAllEmployees();
         if (mounted) {
           setState(() {
             _allUsers = users;
+            // Default select the first user if available
             if (users.isNotEmpty && _selectedUser == null) {
               _selectedUser = users.first;
+            }
+          });
+        }
+      } else {
+        // Employee: load all admins
+        final admins = await _supabaseService.getAllAdmins();
+        if (mounted) {
+          setState(() {
+            _allUsers = admins;
+            // Default select the first admin if available
+            if (admins.isNotEmpty && _selectedUser == null) {
+              _selectedUser = admins.first;
             }
           });
         }
@@ -96,26 +108,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
           widget.user.id,
           _selectedUser!.id,
         );
-      } else {
-        // Employee: load conversation with admin
-        // First, try to get any message to find the admin
-        final receivedMessages = await _supabaseService.getMessagesForUser(
+      } else if (!widget.isAdminView && _selectedUser != null) {
+        // Employee: load conversation with selected Admin
+        messages = await _supabaseService.getConversation(
           widget.user.id,
+          _selectedUser!.id,
         );
-
-        if (receivedMessages.isNotEmpty) {
-          // Get the admin ID from the first message
-          final adminId = receivedMessages.first['sender_id'];
-          _employeeAdminId = adminId;
-
-          // Load full conversation with that admin
-          messages = await _supabaseService.getConversation(
-            widget.user.id,
-            adminId,
-          );
-        } else {
-          messages = [];
-        }
+      } else {
+        // Fallback/Empty state
+        messages = [];
       }
 
       if (mounted) {
@@ -149,21 +150,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
-    if (widget.isAdminView && _selectedUser == null) return;
-    if (!widget.isAdminView && _employeeAdminId == null && _messages.isEmpty) {
-      // Employee has no admin to send to yet
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No admin to send message to')),
-      );
-      return;
-    }
+    if (_selectedUser == null) return;
 
     setState(() => _isSending = true);
 
     try {
-      final recipientId = widget.isAdminView
-          ? _selectedUser!.id
-          : _employeeAdminId ?? _messages.first['sender_id'];
+      final recipientId = _selectedUser!.id;
 
       await _supabaseService.sendMessage(
         senderId: widget.user.id,
@@ -207,7 +199,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       child: Column(
         children: [
           _buildHeader(),
-          if (widget.isAdminView && _allUsers.isNotEmpty) _buildUserSelector(),
+          if (_allUsers.isNotEmpty) _buildUserSelector(),
           Expanded(child: _buildMessageList()),
           _buildMessageInput(),
         ],
@@ -383,9 +375,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isMe) ...[
             CircleAvatar(

@@ -26,13 +26,41 @@ class OfficeHoursService {
     final outTime = _parseTimeString(settings['out_time']);
     final currentTime = TimeOfDay.now();
 
-    final isWithin = _isTimeBetween(currentTime, inTime, outTime);
+    final currentMinutes = currentTime.hour * 60 + currentTime.minute;
+    final inMinutes = inTime.hour * 60 + inTime.minute;
+    final outMinutes = outTime.hour * 60 + outTime.minute;
+
+    bool isWithin = false;
+    bool isBefore = false;
+    bool isAfter = false;
+
+    if (outMinutes < inMinutes) {
+      // Overnight shift (e.g. 10 PM to 6 AM)
+      isWithin = currentMinutes >= inMinutes || currentMinutes <= outMinutes;
+
+      if (!isWithin) {
+        // Outside shift hours (e.g. 12 PM)
+        // If we consider the "day" starting at inTime previous day...
+        // Basically if it's > outMinutes and < inMinutes, it's "between shifts"
+        // We can treat this as "After" the previous shift (or Before next).
+        // For auto-signout purposes, we just need to know it's NOT within.
+        // But to be precise:
+        isAfter = currentMinutes > outMinutes && currentMinutes < inMinutes;
+      }
+    } else {
+      // Standard shift (e.g. 9 AM to 6 PM)
+      isWithin = currentMinutes >= inMinutes && currentMinutes <= outMinutes;
+      isBefore = currentMinutes < inMinutes;
+      isAfter = currentMinutes > outMinutes;
+    }
 
     if (!isWithin) {
       final inTimeStr = _formatTime(inTime);
       final outTimeStr = _formatTime(outTime);
       return OfficeHoursStatus(
         isWithinHours: false,
+        isBeforeHours: isBefore,
+        isAfterHours: isAfter,
         message: 'Office hours are $inTimeStr to $outTimeStr',
         officeInTime: inTime,
         officeOutTime: outTime,
@@ -54,19 +82,6 @@ class OfficeHoursService {
     );
   }
 
-  bool _isTimeBetween(TimeOfDay current, TimeOfDay start, TimeOfDay end) {
-    final currentMinutes = current.hour * 60 + current.minute;
-    final startMinutes = start.hour * 60 + start.minute;
-    final endMinutes = end.hour * 60 + end.minute;
-
-    if (endMinutes < startMinutes) {
-      // Handles overnight shifts (e.g., 10 PM to 6 AM)
-      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
-    } else {
-      return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-    }
-  }
-
   String _formatTime(TimeOfDay time) {
     final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
@@ -78,6 +93,8 @@ class OfficeHoursService {
 class OfficeHoursStatus {
   final bool isWithinHours;
   final bool isSundayOff;
+  final bool isBeforeHours;
+  final bool isAfterHours;
   final String? message;
   final TimeOfDay? officeInTime;
   final TimeOfDay? officeOutTime;
@@ -85,6 +102,8 @@ class OfficeHoursStatus {
   OfficeHoursStatus({
     required this.isWithinHours,
     this.isSundayOff = false,
+    this.isBeforeHours = false,
+    this.isAfterHours = false,
     this.message,
     this.officeInTime,
     this.officeOutTime,

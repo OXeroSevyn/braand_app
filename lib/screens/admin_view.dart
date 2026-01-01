@@ -19,6 +19,7 @@ import 'insights_screen.dart';
 import 'profile_screen.dart';
 import 'user_management_screen.dart';
 import 'admin_employee_list_screen.dart';
+import 'notice_board_screen.dart';
 
 class AdminView extends StatefulWidget {
   const AdminView({super.key});
@@ -64,8 +65,8 @@ class _AdminViewState extends State<AdminView> {
     _unreadCheckTimer = Timer.periodic(const Duration(seconds: 2), (
       timer,
     ) async {
-      if (mounted && _currentIndex != 4) {
-        // Only check when not on Messages tab (index 4)
+      if (mounted && _currentIndex != 5) {
+        // Only check when not on Messages tab (index 5)
         try {
           final auth = Provider.of<AuthProvider>(context, listen: false);
           if (auth.user != null) {
@@ -79,7 +80,7 @@ class _AdminViewState extends State<AdminView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 4) {
+      } else if (mounted && _currentIndex == 5) {
         // Clear badge when on Messages tab
         if (_unreadCount > 0) {
           setState(() {
@@ -141,7 +142,9 @@ class _AdminViewState extends State<AdminView> {
                   ? const InsightsScreen()
                   : _currentIndex == 3
                       ? const AdminEmployeeListScreen()
-                      : MessagesScreen(user: user, isAdminView: true),
+                      : _currentIndex == 4
+                          ? NoticeBoardScreen(user: user)
+                          : MessagesScreen(user: user, isAdminView: true),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -182,6 +185,10 @@ class _AdminViewState extends State<AdminView> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.people),
               label: 'EMPLOYEES',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.assignment),
+              label: 'NOTICES',
             ),
             BottomNavigationBarItem(
               icon: Stack(

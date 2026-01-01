@@ -1,34 +1,81 @@
-# BRAANDINS Flutter App
+# Braand App
 
-This is a complete Flutter port of the BRAANDINS workforce operating system.
+**Braand App** is a comprehensive workforce operating system built with Flutter and Supabase. It provides a robust platform for organizations to manage employee attendance, tasks, and communications with a distinct Neo-brutalism design language.
 
-## Features
+## 🚀 Key Features
 
-*   **Authentication**: 
-    *   Employee Login (`john@braandins.com` / `password`)
-    *   Admin Login (`admin@braandins.com` / `password`)
-*   **Dashboard**:
-    *   **Employee View**: Live Clock, Attendance Actions (Clock In/Out, Break), Weekly Hours Chart, Personal Logs.
-    *   **Admin View**: Global Stats, Employee Status Table, Real-time Activity Feed.
-*   **Design**: Neo-brutalism aesthetic with Dark/Light mode support.
-*   **Persistence**: Uses `shared_preferences` to save user session, theme, and attendance records locally.
+### For Employees
+*   **Smart Attendance Dashboard**:
+    *   **Live Clock**: Real-time server-synced clock.
+    *   **One-Tap Actions**: Clock In, Clock Out, Break Start, and Break End with visual status indicators.
+    *   **Geofencing**: Attendance logic enforces location requirements (must be within office range).
+    *   **Office Hours**: strictly enforces shift timings.
+*   **Personal Insights**:
+    *   **Attendance History**: Calendar view of monthly attendance with status indicators (Full/Partial/Absent).
+    *   **Stats**: Weekly work hour charts and daily summaries.
+*   **Task Management**: View and update assigned tasks.
+*   **Messages**: Integrated chat/announcements with unread badge counters.
+*   **Profile**: Manage personal details and device registration.
 
-## Getting Started
+### For Administrators
+*   **Command Center**:
+    *   **Live Dashboard**: Real-time overview of who is clocked in, on break, or offline.
+    *   **Employee Management**: Add/Edit employees, manage roles and departments.
+*   **Configuration**:
+    *   **Office Locations**: Set up valid office geofences (Latitude/Longitude/Radius).
+    *   **Office Hours**: Define working hours and shift policies.
+*   **Reporting**:
+    *   **Attendance Reports**: detailed logs of employee timings.
+    *   **Task Reports**: track workforce productivity.
 
-1.  Open this folder (`braand_app`) in **Android Studio** or **VS Code**.
-2.  Run `flutter pub get` to install dependencies (already done).
-3.  Select your device (Emulator or Physical Device).
-4.  Run `main.dart` or press the **Run** button.
+## 🛠️ Technology Stack
 
-## Project Structure
+*   **Frontend**: Flutter (Dart)
+*   **Backend**: Supabase (PostgreSQL, Authentication, Realtime)
+*   **Notifications**: Firebase Cloud Messaging (FCM)
+*   **State Management**: Provider
+*   **Location**: Geolocator (GPS & Geofencing)
+*   **Design System**: Custom Neo-brutalism components (`NeoCard`, `NeoButton`) with full Dark/Light mode support.
 
-*   `lib/main.dart`: Entry point and Theme setup.
-*   `lib/providers/`: State management (Auth, Theme).
-*   `lib/screens/`: UI Screens (Auth, Dashboard, Admin/Employee Views).
-*   `lib/services/`: Data storage logic.
-*   `lib/widgets/`: Reusable components (NeoCard, NeoButton, Clock).
+## 📂 Project Structure
 
-## Notes
+```
+lib/
+├── main.dart             # App Entry & Initializers (Supabase/Firebase)
+├── screens/
+│   ├── dashboard_screen.dart   # Main Shell (Mobile/Web layout logic)
+│   ├── employee_view.dart      # Employee Tab Navigation
+│   ├── admin_view.dart         # Admin Tab Navigation
+│   ├── attendance_screen.dart  # Calendar & History View
+│   ├── office_locations_screen.dart # Geofence Config
+│   └── ...
+├── services/
+│   ├── attendance_verification_service.dart # Core Attendance Logic
+│   ├── office_hours_service.dart            # Shift Validation
+│   └── supabase_service.dart                # Database Interactions
+├── widgets/              # Reusable Neo-brutalism Components
+└── providers/            # Auth & Theme State
+```
 
-*   Location services are implemented using `geolocator`. You may need to grant permissions on the device.
-*   Data is stored locally on the device.
+## ⚡ Getting Started
+
+1.  **Prerequisites**:
+    *   Flutter SDK installed.
+    *   Supabase project set up.
+    *   Firebase project configured (for notifications).
+
+2.  **Installation**:
+    ```bash
+    git clone https://github.com/your-repo/braand_app.git
+    cd braand_app
+    flutter pub get
+    ```
+
+3.  **Configuration**:
+    *   Add your Supabase credentials in `lib/supabase_credentials.dart`.
+    *   Ensure `google-services.json` is present in `android/app/`.
+
+4.  **Run**:
+    ```bash
+    flutter run
+    ```

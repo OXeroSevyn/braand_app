@@ -14,6 +14,8 @@ import 'services/notification_service.dart';
 import 'services/permissions_service.dart';
 import 'widgets/global_notification_listener.dart';
 import 'services/auto_signout_service.dart';
+import 'widgets/snowfall_overlay.dart';
+import 'screens/reset_password_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_credentials.dart';
@@ -35,10 +37,6 @@ void main() async {
     } catch (e) {
       debugPrint('❌ Error initializing Firebase: $e');
     }
-
-    final autoSignOutService = AutoSignOutService();
-    autoSignOutService.start();
-    debugPrint('✅ Auto sign-out service started');
   } else {
     // Initialize Firebase for Web (uses explicit config)
     try {
@@ -57,6 +55,11 @@ void main() async {
       debugPrint('❌ Error initializing Firebase Web: $e');
     }
   }
+
+  // Start auto sign-out service (runs in background on all platforms)
+  final autoSignOutService = AutoSignOutService();
+  autoSignOutService.start();
+  debugPrint('✅ Auto sign-out service started');
 
   // Initialize notification service (runs on both mobile and web now)
   try {
@@ -100,6 +103,9 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: AppConstants.appName,
             debugShowCheckedModeBanner: false,
+            builder: (context, child) => theme.isSnowfallEnabled
+                ? SnowfallOverlay(child: child!)
+                : child!,
             theme: _buildTheme(false),
             darkTheme: _buildTheme(true),
             themeMode: theme.isDarkMode ? ThemeMode.dark : ThemeMode.light,
@@ -107,13 +113,17 @@ class MyApp extends StatelessWidget {
                 ? const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   )
-                : GlobalNotificationListener(
-                    child: auth.user != null
-                        ? (auth.isPending
-                            ? const PendingApprovalScreen()
-                            : const DashboardScreen())
-                        : (kIsWeb ? const WebAuthScreen() : const AuthScreen()),
-                  ),
+                : auth.shouldShowPasswordReset
+                    ? const ResetPasswordScreen()
+                    : GlobalNotificationListener(
+                        child: auth.user != null
+                            ? (auth.isPending
+                                ? const PendingApprovalScreen()
+                                : const DashboardScreen())
+                            : (kIsWeb
+                                ? const WebAuthScreen()
+                                : const AuthScreen()),
+                      ),
           );
         },
       ),

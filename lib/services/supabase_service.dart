@@ -9,6 +9,7 @@ import '../models/report_data.dart';
 import '../models/task.dart';
 import '../models/device_binding.dart';
 import '../models/office_location.dart';
+import '../models/notice.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -27,6 +28,17 @@ class SupabaseService {
     });
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      debugPrint('📧 Sending password reset email to: $email');
+      await _supabase.auth.resetPasswordForEmail(email);
+      debugPrint('✅ Password reset email sent');
+    } catch (e) {
+      debugPrint('❌ Error sending password reset email: $e');
+      rethrow;
+    }
+  }
+
   Future<List<app_models.User>> getAllEmployees() async {
     debugPrint('📡 Fetching all active employees...');
     final response = await _supabase
@@ -37,6 +49,16 @@ class SupabaseService {
 
     final List<dynamic> data = response as List<dynamic>;
     debugPrint('📡 Received ${data.length} active employees from DB');
+    return data.map((json) => app_models.User.fromJson(json)).toList();
+  }
+
+  Future<List<app_models.User>> getAllAdmins() async {
+    debugPrint('📡 Fetching all admins...');
+    final response =
+        await _supabase.from('profiles').select().eq('role', 'Admin');
+
+    final List<dynamic> data = response as List<dynamic>;
+    debugPrint('📡 Received ${data.length} admins from DB');
     return data.map((json) => app_models.User.fromJson(json)).toList();
   }
 
@@ -773,7 +795,10 @@ class SupabaseService {
 
   /// Auto sign-out users who are still clocked in after office hours
   /// This should be called by a scheduled task/cron job
-  Future<void> autoSignOutUser(String userId) async {
+  /// Auto sign-out user and return logs
+  Future<List<String>> autoSignOutUser(String userId) async {
+    List<String> logs = [];
+    logs.add('👤 Checking user: $userId');
     try {
       // Get today's records for the user
       final now = DateTime.now();
@@ -785,6 +810,7 @@ class SupabaseService {
         todayStart,
         todayEnd,
       );
+      logs.add('   - Found ${records.length} records today');
 
       // Check if there's an unmatched clock-in
       final clockIns =
@@ -793,33 +819,58 @@ class SupabaseService {
           records.where((r) => r.type == AttendanceType.CLOCK_OUT).toList();
 
       if (clockIns.isNotEmpty && clockOuts.length < clockIns.length) {
+        logs.add('   - ⚠️ Unmatched Clock-In found. Attempting sign-out...');
         // Create auto sign-out record
         await _supabase.from('attendance_records').insert({
           'user_id': userId,
           'type': 'AttendanceType.CLOCK_OUT',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
           'biometric_verified': false,
-          'verification_method': 'auto_signout',
+          'verification_method':
+              'none', // 'manual' failed, 'none' is explicitly allowed per model comments
         });
 
         debugPrint('✅ Auto signed out user: $userId');
+        logs.add('   - ✅ SUCCESS: Auto signed out user');
+      } else {
+        logs.add('   - OK: No unmatched clock-ins');
       }
     } catch (e) {
       debugPrint('❌ Error auto signing out user: $e');
+      logs.add('   - ❌ ERROR: $e');
     }
+    return logs;
+  }
+
+  Future<List<app_models.User>> getAllActiveUsers() async {
+    debugPrint('📡 Fetching all active users...');
+    final response = await _supabase
+        .from('profiles')
+        .select()
+        .eq('status', 'active'); // Fetch all active users (Employees + Admins)
+
+    final List<dynamic> data = response as List<dynamic>;
+    debugPrint('📡 Received ${data.length} active users from DB');
+    return data.map((json) => app_models.User.fromJson(json)).toList();
   }
 
   /// Get all users who are currently clocked in (for auto sign-out check)
-  Future<List<String>> getUsersCurrentlySignedIn() async {
+  /// Returns a tuple of [UserIds, Logs]
+  Future<Map<String, dynamic>> getUsersCurrentlySignedInWithLogs() async {
+    List<String> signedInUsers = [];
+    List<String> logs = [];
+    logs.add('🔍 Scanning for signed-in users...');
+
     try {
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
 
-      // Get all employees
-      final employees = await getAllEmployees();
-      List<String> signedInUsers = [];
+      // Get all active users (not just employees)
+      final employees = await getAllActiveUsers();
+      logs.add('   - Found ${employees.length} active users in DB');
 
       for (var employee in employees) {
+        // logs.add('   - Checking ${employee.name}...');
         final records = await getUserRecordsForDateRange(
           employee.id,
           todayStart,
@@ -834,13 +885,65 @@ class SupabaseService {
 
         if (clockIns.isNotEmpty && clockOuts.length < clockIns.length) {
           signedInUsers.add(employee.id);
+          logs.add('   - 🟢 ${employee.name} is currently SIGNED IN');
         }
       }
 
-      return signedInUsers;
+      logs.add('📊 Found ${signedInUsers.length} users to sign out');
+      return {'users': signedInUsers, 'logs': logs};
     } catch (e) {
       debugPrint('❌ Error getting signed in users: $e');
+      logs.add('❌ CRITICAL ERROR scanning users: $e');
+      return {'users': [], 'logs': logs};
+    }
+  }
+
+  // Keeping legacy method for compatibility if needed, but redirecting
+  Future<List<String>> getUsersCurrentlySignedIn() async {
+    final result = await getUsersCurrentlySignedInWithLogs();
+    return result['users'] as List<String>;
+  }
+
+  // --- Notice Board Methods ---
+
+  /// Fetch all notices ordered by creation date (newest first)
+  Future<List<Notice>> getNotices() async {
+    try {
+      final response = await _supabase
+          .from('notices')
+          .select()
+          .order('created_at', ascending: false);
+
+      return (response as List).map((json) => Notice.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error fetching notices: $e');
       return [];
     }
+  }
+
+  /// Create a new notice
+  Future<void> createNotice(Notice notice) async {
+    await _supabase.from('notices').insert({
+      'title': notice.title,
+      'content': notice.content,
+      'priority': notice.priority,
+      'category': notice.category,
+      'created_by': _supabase.auth.currentUser!.id,
+    });
+  }
+
+  /// Update an existing notice
+  Future<void> updateNotice(Notice notice) async {
+    await _supabase.from('notices').update({
+      'title': notice.title,
+      'content': notice.content,
+      'priority': notice.priority,
+      'category': notice.category,
+    }).eq('id', notice.id);
+  }
+
+  /// Delete a notice
+  Future<void> deleteNotice(String id) async {
+    await _supabase.from('notices').delete().eq('id', id);
   }
 }

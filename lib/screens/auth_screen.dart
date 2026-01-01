@@ -47,6 +47,63 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reset Password',
+            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enter your email to receive a password reset link.',
+                style: GoogleFonts.spaceMono(fontSize: 12)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                hintText: 'user@braandins.com',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL',
+                style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (emailController.text.trim().isEmpty) return;
+              Navigator.pop(context);
+
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              final error =
+                  await auth.resetPassword(emailController.text.trim());
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      error ?? 'Password reset email sent! Check your inbox.',
+                      style: GoogleFonts.spaceMono(),
+                    ),
+                    backgroundColor: error != null ? Colors.red : Colors.green,
+                  ),
+                );
+              }
+            },
+            child: Text('SEND LINK',
+                style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleSubmit() async {
     setState(() => _error = null);
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -101,19 +158,41 @@ class _AuthScreenState extends State<AuthScreen> {
             top: 40,
             right: 20,
             child: Consumer<ThemeProvider>(
-              builder: (context, theme, _) => IconButton(
-                onPressed: theme.toggleTheme,
-                icon:
-                    Icon(theme.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-                style: IconButton.styleFrom(
-                  backgroundColor: isDark ? Colors.black : Colors.white,
-                  foregroundColor: isDark ? Colors.white : Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                        color: isDark ? Colors.white : Colors.black, width: 2),
+              builder: (context, theme, _) => Row(
+                children: [
+                  IconButton(
+                    onPressed: theme.toggleSnowfall,
+                    icon: Icon(theme.isSnowfallEnabled
+                        ? Icons.ac_unit
+                        : Icons.ac_unit_outlined),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark ? Colors.black : Colors.white,
+                      foregroundColor: isDark ? Colors.white : Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                            color: isDark ? Colors.white : Colors.black,
+                            width: 2),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: theme.toggleTheme,
+                    icon: Icon(
+                        theme.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark ? Colors.black : Colors.white,
+                      foregroundColor: isDark ? Colors.white : Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                            color: isDark ? Colors.white : Colors.black,
+                            width: 2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -233,7 +312,22 @@ class _AuthScreenState extends State<AuthScreen> {
                               hintText: '••••••••',
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          if (_isLogin)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _showForgotPasswordDialog,
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: GoogleFonts.spaceMono(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 24),
 
                           Consumer<AuthProvider>(
                             builder: (context, auth, _) => NeoButton(
@@ -291,6 +385,45 @@ class _AuthScreenState extends State<AuthScreen> {
               TextSpan(text: 'BRAANDINS'),
               TextSpan(text: '.', style: TextStyle(color: AppColors.brand)),
             ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(seconds: 2),
+          builder: (context, value, child) {
+            return Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(0, 20 * (1 - value)),
+                child: child,
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.amber, width: 2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🎉', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  'Happy New Year, 2026',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.amber : Colors.orange[800],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('🎊', style: TextStyle(fontSize: 20)),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
