@@ -6,9 +6,9 @@ class NeoCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final Color? shadowColor;
-  final double offset;
+  final double offset; // Kept for API compatibility, but used for elevation
   final EdgeInsetsGeometry padding;
-  final double borderThickness;
+  final double borderThickness; // Kept for compatibility, mostly unused
 
   const NeoCard({
     super.key,
@@ -24,41 +24,42 @@ class NeoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveShadowColor =
-        shadowColor ?? (isDark ? AppColors.brand : Colors.black);
-    final effectiveBorderColor =
-        borderColor ?? (isDark ? Colors.white : Colors.black);
     final effectiveBackgroundColor =
         backgroundColor ?? (isDark ? AppColors.darkSurface : Colors.white);
 
+    // Modern shadow color (softer)
+    final effectiveShadowColor = shadowColor ??
+        (isDark
+            ? Colors.black.withOpacity(0.5)
+            : Colors.black.withOpacity(0.05));
+
     return Container(
-      decoration: const BoxDecoration(color: Colors.transparent),
-      child: Stack(
-        children: [
-          // Shadow
-          Positioned(
-            top: offset,
-            left: offset,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: BoxDecoration(color: effectiveShadowColor),
-            ),
+      decoration: BoxDecoration(
+        color: effectiveBackgroundColor,
+        borderRadius: BorderRadius.circular(24.0), // Rounded corners
+        boxShadow: [
+          BoxShadow(
+            color: effectiveShadowColor,
+            offset: const Offset(0, 4), // Soft bottom shadow
+            blurRadius: 16.0,
+            spreadRadius: 0,
           ),
-          // Content
-          Container(
-            margin: EdgeInsets.only(bottom: offset, right: offset),
-            decoration: BoxDecoration(
-              color: effectiveBackgroundColor,
-              border: Border.all(
-                color: effectiveBorderColor,
-                width: borderThickness,
-              ),
+          // Add a subtle border for contrast in dark mode
+          if (isDark)
+            BoxShadow(
+              color: Colors.white.withOpacity(0.05),
+              offset: const Offset(0, 0),
+              blurRadius: 0,
+              spreadRadius: 1,
             ),
-            padding: padding,
-            child: child,
-          ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24.0),
+        child: Padding(
+          padding: padding,
+          child: child,
+        ),
       ),
     );
   }

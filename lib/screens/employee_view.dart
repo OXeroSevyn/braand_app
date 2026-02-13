@@ -19,6 +19,7 @@ import 'employee_tasks_screen.dart';
 import '../services/office_hours_service.dart';
 import 'profile_screen.dart';
 import 'notice_board_screen.dart';
+import 'leave_screen.dart';
 
 class EmployeeView extends StatefulWidget {
   final User user;
@@ -284,6 +285,7 @@ class _EmployeeViewState extends State<EmployeeView> {
         children: [
           _buildDashboard(),
           AttendanceScreen(user: widget.user),
+          const LeaveScreen(),
           EmployeeTasksScreen(user: widget.user),
           NoticeBoardScreen(user: widget.user),
           MessagesScreen(user: widget.user),
@@ -322,6 +324,10 @@ class _EmployeeViewState extends State<EmployeeView> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.calendar_month),
               label: 'ATTENDANCE',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.flight_takeoff),
+              label: 'LEAVES',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.checklist),
@@ -685,10 +691,8 @@ class _EmployeeViewState extends State<EmployeeView> {
                       decoration: BoxDecoration(
                         color:
                             _getTypeColor(record.type).withValues(alpha: 0.2),
-                        border: Border.all(
-                          color: _getTypeColor(record.type),
-                          width: 2,
-                        ),
+                        borderRadius: BorderRadius.circular(12), // Rounded
+                        // Removed hard border
                       ),
                       child: Icon(
                         _getTypeIcon(record.type),

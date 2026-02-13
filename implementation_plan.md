@@ -34,4 +34,18 @@ To show real-time data for all users (Employees and Admins), we need to move bey
 1.  **Run SQL**: User runs the script.
 2.  **Sign Up**: Create a new Employee user. Verify they appear in the `profiles` table (and thus the Admin View).
 3.  **Clock In**: Employee clocks in.
-4.  **Admin Check**: Admin sees the Employee as "ONLINE" and sees the "CLOCK_IN" event in the feed.
+
+## Project Cleanup & Security (Immediate Action)
+
+### 1. Security
+- [ ] Add `serviceAccountKey.json` to `.gitignore` to prevent accidental commits of secrets.
+- [ ] Add `**/*.json` or specific patterns to ignore other temp keys.
+
+### 2. Organization
+- [ ] Create `database/migrations` directory.
+- [ ] Move all `.sql` files from root to `database/migrations`.
+- [ ] Create `scripts` directory.
+- [ ] Move `*.py` and `*.bat` utility scripts to `scripts/`.
+- [ ] Move `serviceAccountKey.json` to `scripts/` (and update references).
+
+

@@ -243,6 +243,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _showChangePasswordDialog() async {
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+    String? error;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text(
+              'CHANGE PASSWORD',
+              style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (error != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    ),
+                    child: Text(
+                      error!,
+                      style: GoogleFonts.spaceMono(
+                          color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New Password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: confirmController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm Password',
+                    prefixIcon: Icon(Icons.verified_user),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('CANCEL'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final password = passwordController.text.trim();
+                  final confirm = confirmController.text.trim();
+
+                  if (password.isEmpty || confirm.isEmpty) {
+                    setState(() => error = 'Please fill all fields');
+                    return;
+                  }
+                  if (password != confirm) {
+                    setState(() => error = 'Passwords do not match');
+                    return;
+                  }
+                  if (password.length < 6) {
+                    setState(() => error = 'Minimum 6 characters required');
+                    return;
+                  }
+
+                  // Perform Update (using separate loading state logic if needed)
+                  // using a try-catch block inside an async immediate execution
+                  try {
+                    // Show global loading or handle inside dialog?
+                    // Dialogs are tricky with async gaps.
+                    // We'll just assume success or show error.
+                    await _supabaseService.updatePassword(password);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      _showSuccess('Password updated successfully!');
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      setState(() => error = e.toString());
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.black,
+                ),
+                child: const Text('UPDATE'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -431,6 +534,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ],
+              ),
+            ],
+
+            // Change Password Button (Only for own profile and not editing)
+            if (widget.isOwnProfile && !_isEditing) ...[
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: NeoButton(
+                  text: 'CHANGE PASSWORD',
+                  color: Colors.black,
+                  textColor: Colors.white,
+                  icon: const Icon(Icons.lock_reset, color: Colors.white),
+                  onPressed: _showChangePasswordDialog,
+                ),
               ),
             ],
           ],

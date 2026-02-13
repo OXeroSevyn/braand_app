@@ -9,9 +9,83 @@ import 'admin_view.dart';
 import 'employee_view.dart';
 import 'web_dashboard_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../services/supabase_service.dart';
+import '../models/app_version.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      _checkForUpdates();
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    final supabaseService = SupabaseService();
+    final update = await supabaseService.checkForUpdates();
+
+    if (update != null && mounted) {
+      _showUpdateDialog(update);
+    }
+  }
+
+  void _showUpdateDialog(AppVersion update) {
+    showDialog(
+      context: context,
+      barrierDismissible: !update.forceUpdate,
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async => !update.forceUpdate,
+          child: AlertDialog(
+            title: const Text('Update Available 🚀'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'A new version ${update.versionName} is available.',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (update.releaseNotes != null) ...[
+                  const SizedBox(height: 10),
+                  const Text('What\'s new:'),
+                  Text(update.releaseNotes!),
+                ],
+                if (update.forceUpdate) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'This is a mandatory update. Please update to continue using the app.',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              if (!update.forceUpdate)
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Later'),
+                ),
+              ElevatedButton(
+                onPressed: () {
+                  SupabaseService().launchUpdateUrl(update.apkUrl);
+                },
+                child: const Text('Update Now'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,27 +104,32 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildMobileLayout(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user!;
+    final user = Provider.of<AuthProvider>(context).user;
+
+    // Handle case where user might be null briefly during logout/auth state change
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
         elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(2),
-          child: Container(
-            color: isDark ? Colors.white10 : Colors.black,
-            height: 2,
-          ),
-        ),
+        scrolledUnderElevation: 2, // Modern material 3 style
+        shadowColor: isDark
+            ? Colors.white.withOpacity(0.1)
+            : Colors.black.withOpacity(0.1),
         title: Row(
           children: [
             UserAvatar(
               avatarUrl: user.avatar,
               name: user.name,
               size: 40,
-              showBorder: true,
+              showBorder: false, // Cleaner look
             ),
             const SizedBox(width: 12),
             Column(
@@ -65,10 +144,12 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${user.role} // ${user.department}'.toUpperCase(),
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 10,
+                  '${user.role} • ${user.department}', // Changed // to bullet
+                  style: GoogleFonts.spaceGrotesk(
+                    // Changed to Grotesk
+                    fontSize: 11,
                     color: isDark ? AppColors.brand : Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

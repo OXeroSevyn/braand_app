@@ -1,7 +1,7 @@
 name: braand_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.6+7
 
 environment:
   sdk: ^3.5.0
@@ -29,6 +29,7 @@ dependencies:
   firebase_core: ^4.3.0
   firebase_messaging: ^16.1.0
   flutter_local_notifications: ^19.5.0
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:

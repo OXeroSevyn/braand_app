@@ -12,7 +12,9 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 # Firebase Service Account Key Path
 # YOU MUST DOWNLOAD THIS FROM FIREBASE CONSOLE:
 # Project Settings > Service accounts > Generate new private key
-SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
+# Project Settings > Service accounts > Generate new private key
+SERVICE_ACCOUNT_KEY_PATH = os.path.join(os.path.dirname(__file__), "serviceAccountKey.json")
+
 
 def init_firebase():
     try:

@@ -135,6 +135,12 @@ class MyApp extends StatelessWidget {
     return base.copyWith(
       scaffoldBackgroundColor:
           isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      cardTheme: CardThemeData(
+        // Fixed: Use CardThemeData instead of CardTheme
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        color: isDark ? AppColors.darkSurface : Colors.white,
+      ),
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.brand,
         secondary: AppColors.brand,
@@ -148,46 +154,41 @@ class MyApp extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.brand,
           foregroundColor: Colors.black,
-          textStyle: GoogleFonts.spaceMono(fontWeight: FontWeight.bold),
+          textStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
-            side: BorderSide(
-              color: isDark ? Colors.white : Colors.black,
-              width: 2,
-            ),
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
-        ).copyWith(shadowColor: MaterialStateProperty.all(Colors.transparent)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? Colors.black : Colors.grey[50],
+        fillColor: isDark ? Colors.grey[900] : Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
-          borderSide: BorderSide(
-            color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-            width: 2,
-          ),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-            width: 2,
+            color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+            width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: isDark ? AppColors.brand : Colors.black,
+            color: AppColors.brand,
             width: 2,
           ),
         ),
-        labelStyle: GoogleFonts.spaceMono(
-          color: isDark ? AppColors.brand : Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
+        labelStyle: GoogleFonts.spaceGrotesk(
+          color: isDark ? AppColors.brand : Colors.grey[600],
+          fontWeight: FontWeight.w500,
         ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
     );
   }

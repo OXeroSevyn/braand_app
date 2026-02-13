@@ -42,11 +42,9 @@ class AutoSignOutService {
     executionLogs.add('🕐 Starting Auto Sign-Out Check at ${DateTime.now()}');
 
     try {
-      // Ensure user is authenticated before checking
-      if (Supabase.instance.client.auth.currentUser == null) {
-        executionLogs.add('❌ ABORTED: No authenticated user found.');
-        return executionLogs;
-      }
+      // NOTE: We do not strictly check for Supabase.instance.client.auth.currentUser
+      // because we want this service to ATTEMPT to run if the app is open.
+      // RLS policies might still block it if no one is logged in, but we shouldn't abort proactively.
 
       final officeHours = await _officeHoursService.checkOfficeHours();
       executionLogs.add('🏢 Office Hours Status:');
@@ -57,6 +55,10 @@ class AutoSignOutService {
         executionLogs.add('   - 🕒 Current time is BEFORE office hours');
       if (officeHours.isWithinHours)
         executionLogs.add('   - 🕒 Current time is WITHIN office hours');
+
+      // --- NEW: ALWAYS Check for stale breaks (run every time) ---
+      final breakLogs = await _supabaseService.autoEndStaleBreaks();
+      executionLogs.addAll(breakLogs);
 
       // If we're outside office hours AND strictly AFTER hours, auto sign-out
       if (!officeHours.isWithinHours && officeHours.isAfterHours) {
@@ -86,7 +88,8 @@ class AutoSignOutService {
           executionLogs.add('ℹ️ No users found signed in.');
         }
       } else {
-        executionLogs.add('⏸️ SKIPPED: Not strictly after hours yet.');
+        // Reduced noise logging
+        // executionLogs.add('⏸️ SKIPPED: Not strictly after hours yet.');
       }
     } catch (e) {
       debugPrint('❌ Error in auto sign-out check: $e');

@@ -20,6 +20,7 @@ import 'admin_tasks_screen.dart';
 import 'profile_screen.dart';
 import 'user_management_screen.dart';
 import 'admin_employee_list_screen.dart';
+import 'notice_board_screen.dart';
 
 class WebAdminView extends StatefulWidget {
   const WebAdminView({super.key});
@@ -76,7 +77,8 @@ class _WebAdminViewState extends State<WebAdminView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 5) {
+      } else if (mounted && _currentIndex == 6) {
+        // Index shifted to 6 due to NoticeBoard
         if (_unreadCount > 0) {
           setState(() {
             _unreadCount = 0;
@@ -240,8 +242,9 @@ class _WebAdminViewState extends State<WebAdminView> {
       AttendanceScreen(user: user, isAdminView: true),
       const ReportsScreen(),
       const AdminTasksScreen(),
-      const AdminEmployeeListScreen(), // New Employees Tab
-      MessagesScreen(user: user, isAdminView: true),
+      const AdminEmployeeListScreen(),
+      NoticeBoardScreen(user: user!), // Added Notice Board with user
+      MessagesScreen(user: user!, isAdminView: true),
     ];
 
     return Scaffold(
@@ -272,6 +275,10 @@ class _WebAdminViewState extends State<WebAdminView> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: 'Employees',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_active),
+            label: 'Notices',
           ),
           BottomNavigationBarItem(
             icon: _unreadCount > 0

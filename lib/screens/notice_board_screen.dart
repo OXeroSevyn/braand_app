@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../models/notice.dart';
 import '../models/user.dart';
 import '../services/supabase_service.dart';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
 
 class NoticeBoardScreen extends StatefulWidget {
@@ -316,12 +318,9 @@ class NoticeCard extends StatelessWidget {
           // Content
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(
-              notice.content,
-              style: GoogleFonts.spaceMono(
-                fontSize: 14,
-                color: accentColor,
-                height: 1.5,
+            child: RichText(
+              text: TextSpan(
+                children: _parseContent(notice.content, accentColor),
               ),
             ),
           ),
@@ -347,6 +346,64 @@ class NoticeCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<InlineSpan> _parseContent(String text, Color textColor) {
+    final List<InlineSpan> spans = [];
+    final RegExp urlRegex = RegExp(
+      r'(https?:\/\/[^\s]+)',
+      caseSensitive: false,
+    );
+
+    int start = 0;
+    for (final Match match in urlRegex.allMatches(text)) {
+      // Add text before the URL
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: text.substring(start, match.start),
+          style: GoogleFonts.spaceMono(
+            fontSize: 14,
+            color: textColor,
+            height: 1.5,
+          ),
+        ));
+      }
+
+      // Add the URL
+      final String url = match.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: GoogleFonts.spaceMono(
+          fontSize: 14,
+          color: Colors.blue, // Hyperlink color
+          decoration: TextDecoration.underline,
+          height: 1.5,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+      ));
+
+      start = match.end;
+    }
+
+    // Add remaining text
+    if (start < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(start),
+        style: GoogleFonts.spaceMono(
+          fontSize: 14,
+          color: textColor,
+          height: 1.5,
+        ),
+      ));
+    }
+
+    return spans;
   }
 }
 

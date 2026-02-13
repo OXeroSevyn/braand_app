@@ -19,6 +19,7 @@ import '../widgets/location_status_widget.dart';
 import 'messages_screen.dart';
 import 'employee_tasks_screen.dart';
 import 'profile_screen.dart';
+import 'notice_board_screen.dart';
 
 class WebEmployeeView extends StatefulWidget {
   final User user;
@@ -75,7 +76,8 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 2) {
+      } else if (mounted && _currentIndex == 3) {
+        // Messages is at index 3 now
         if (_unreadCount > 0) {
           setState(() {
             _unreadCount = 0;
@@ -236,6 +238,7 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
     final List<Widget> screens = [
       _buildDashboard(isDark),
       AttendanceScreen(user: widget.user),
+      NoticeBoardScreen(user: widget.user), // Added Notice Board
       MessagesScreen(user: widget.user),
       EmployeeTasksScreen(user: widget.user),
       ProfileScreen(user: widget.user),
@@ -257,6 +260,10 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.access_time),
             label: 'Attendance',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_active),
+            label: 'Notices',
           ),
           BottomNavigationBarItem(
             icon: _unreadCount > 0

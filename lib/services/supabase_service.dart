@@ -10,6 +10,10 @@ import '../models/task.dart';
 import '../models/device_binding.dart';
 import '../models/office_location.dart';
 import '../models/notice.dart';
+import '../models/leave_request.dart';
+import '../models/app_version.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -31,10 +35,29 @@ class SupabaseService {
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       debugPrint('📧 Sending password reset email to: $email');
-      await _supabase.auth.resetPasswordForEmail(email);
-      debugPrint('✅ Password reset email sent');
+      final redirectUrl =
+          kIsWeb ? null : 'io.supabase.braandapp://login-callback';
+
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: redirectUrl,
+      );
+      debugPrint('✅ Password reset email sent (Redirect: $redirectUrl)');
     } catch (e) {
       debugPrint('❌ Error sending password reset email: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      debugPrint('🔐 Updating password...');
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      debugPrint('✅ Password updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating password: $e');
       rethrow;
     }
   }
@@ -854,41 +877,60 @@ class SupabaseService {
     return data.map((json) => app_models.User.fromJson(json)).toList();
   }
 
-  /// Get all users who are currently clocked in (for auto sign-out check)
-  /// Returns a tuple of [UserIds, Logs]
+  /// Get a list of users who are currently signed in (have an unmatched CLOCK_IN)
   Future<Map<String, dynamic>> getUsersCurrentlySignedInWithLogs() async {
-    List<String> signedInUsers = [];
     List<String> logs = [];
-    logs.add('🔍 Scanning for signed-in users...');
-
+    logs.add('🔍 Checking for currently signed-in users...');
     try {
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
 
-      // Get all active users (not just employees)
+      // 1. Fetch all active users
       final employees = await getAllActiveUsers();
-      logs.add('   - Found ${employees.length} active users in DB');
+      if (employees.isEmpty) {
+        logs.add('   - No active users found.');
+        return {'users': [], 'logs': logs};
+      }
+
+      // 2. Fetch all records for today
+      final response = await _supabase
+          .from('attendance_records')
+          .select()
+          .gte('timestamp', todayStart.millisecondsSinceEpoch)
+          .lte('timestamp', now.millisecondsSinceEpoch)
+          .order('timestamp', ascending: true);
+
+      final List<dynamic> data = response as List<dynamic>;
+      final allRecords = data.map((json) {
+        return AttendanceRecord(
+          id: json['id'],
+          userId: json['user_id'],
+          type: _parseAttendanceType(json['type']),
+          timestamp: json['timestamp'],
+          location: null,
+        );
+      }).toList();
+
+      List<String> signedInUsers = [];
 
       for (var employee in employees) {
-        // logs.add('   - Checking ${employee.name}...');
-        final records = await getUserRecordsForDateRange(
-          employee.id,
-          todayStart,
-          now,
-        );
+        final employeeRecords =
+            allRecords.where((r) => r.userId == employee.id).toList();
 
-        // Check if user has unmatched clock-in
-        final clockIns =
-            records.where((r) => r.type == AttendanceType.CLOCK_IN).toList();
-        final clockOuts =
-            records.where((r) => r.type == AttendanceType.CLOCK_OUT).toList();
+        if (employeeRecords.isEmpty) continue;
+
+        // Determine current status
+        final clockIns = employeeRecords
+            .where((r) => r.type == AttendanceType.CLOCK_IN)
+            .toList();
+        final clockOuts = employeeRecords
+            .where((r) => r.type == AttendanceType.CLOCK_OUT)
+            .toList();
 
         if (clockIns.isNotEmpty && clockOuts.length < clockIns.length) {
           signedInUsers.add(employee.id);
-          logs.add('   - 🟢 ${employee.name} is currently SIGNED IN');
         }
       }
-
       logs.add('📊 Found ${signedInUsers.length} users to sign out');
       return {'users': signedInUsers, 'logs': logs};
     } catch (e) {
@@ -896,6 +938,87 @@ class SupabaseService {
       logs.add('❌ CRITICAL ERROR scanning users: $e');
       return {'users': [], 'logs': logs};
     }
+  }
+
+  /// Automatically end breaks that are longer than 1 hour
+  Future<List<String>> autoEndStaleBreaks() async {
+    List<String> logs = [];
+    logs.add('☕ Checking for stale breaks (> 1 hour)...');
+
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final oneHourMillis = const Duration(hours: 1).inMilliseconds;
+
+      // 1. Fetch all active users
+      final employees = await getAllActiveUsers();
+      if (employees.isEmpty) {
+        return logs..add('   - No active users found.');
+      }
+
+      // 2. Fetch all records for today
+      final response = await _supabase
+          .from('attendance_records')
+          .select()
+          .gte('timestamp', todayStart.millisecondsSinceEpoch)
+          .lte('timestamp', now.millisecondsSinceEpoch)
+          .order('timestamp', ascending: true);
+
+      final List<dynamic> data = response as List<dynamic>;
+      final allRecords = data.map((json) {
+        return AttendanceRecord(
+          id: json['id'],
+          userId: json['user_id'],
+          type: _parseAttendanceType(json['type']),
+          timestamp: json['timestamp'],
+          location: null,
+        );
+      }).toList();
+
+      int fixedCount = 0;
+
+      for (var employee in employees) {
+        final employeeRecords =
+            allRecords.where((r) => r.userId == employee.id).toList();
+
+        if (employeeRecords.isEmpty) continue;
+
+        // Determine current status
+        final lastRecord = employeeRecords.last;
+
+        if (lastRecord.type == AttendanceType.BREAK_START) {
+          final breakDuration =
+              now.millisecondsSinceEpoch - lastRecord.timestamp;
+
+          if (breakDuration > oneHourMillis) {
+            logs.add(
+                '   - ⚠️ ${employee.name} has been on break for ${(breakDuration / 60000).toStringAsFixed(0)} mins. Auto ending...');
+
+            // Insert BREAK_END record
+            await _supabase.from('attendance_records').insert({
+              'user_id': employee.id,
+              'type': 'AttendanceType.BREAK_END',
+              // Set timestamp to exactly 1 hour after start? Or now?
+              // User request: "break should automatically ends after 1 hour"
+              // Best UX: End it "Now" so they see the real time, OR end it at 1h mark?
+              // Implementation: End it NOW, so the system reflects "We caught you now".
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+              'biometric_verified': false,
+              'verification_method': 'none',
+            });
+            fixedCount++;
+          }
+        }
+      }
+
+      logs.add(fixedCount > 0
+          ? '✅ Auto-ended $fixedCount stale breaks.'
+          : '   - No stale breaks found.');
+    } catch (e) {
+      debugPrint('❌ Error checking stale breaks: $e');
+      logs.add('❌ CRITICAL ERROR checking breaks: $e');
+    }
+    return logs;
   }
 
   // Keeping legacy method for compatibility if needed, but redirecting
@@ -945,5 +1068,174 @@ class SupabaseService {
   /// Delete a notice
   Future<void> deleteNotice(String id) async {
     await _supabase.from('notices').delete().eq('id', id);
+  }
+
+  // --- Stories (Announcements) ---
+
+  // --- Leave Management ---
+
+  /// Submit a new leave request
+  Future<void> submitLeaveRequest({
+    required DateTime startDate,
+    required DateTime endDate,
+    required String leaveType,
+    required String reason,
+  }) async {
+    final userId = _supabase.auth.currentUser!.id;
+    await _supabase.from('leave_requests').insert({
+      'user_id': userId,
+      'start_date': startDate.toIso8601String(),
+      'end_date': endDate.toIso8601String(),
+      'leave_type': leaveType,
+      'reason': reason,
+      'status': 'Pending',
+    });
+  }
+
+  /// Get leave requests for the current user
+  Future<List<LeaveRequest>> getMyLeaveRequests() async {
+    final userId = _supabase.auth.currentUser!.id;
+    final response = await _supabase
+        .from('leave_requests')
+        .select()
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+
+    final List<dynamic> data = response as List<dynamic>;
+    return data.map((json) => LeaveRequest.fromJson(json)).toList();
+  }
+
+  /// Get all leave requests (Admin only)
+  Future<List<LeaveRequest>> getAllLeaveRequests() async {
+    // We join with profiles to get user names
+    // Fetch from the view that already joins profiles
+    final response = await _supabase
+        .from('admin_leave_requests_view')
+        .select()
+        .order('created_at', ascending: false);
+
+    final List<dynamic> data = response as List<dynamic>;
+    return data.map((json) => LeaveRequest.fromJson(json)).toList();
+  }
+
+  /// Update leave request status (Admin only)
+  Future<void> updateLeaveStatus({
+    required String requestId,
+    required String status,
+    String? adminComment,
+  }) async {
+    try {
+      await _supabase.from('leave_requests').update({
+        'status': status,
+        'admin_comment': adminComment,
+      }).eq('id', requestId);
+    } catch (e) {
+      debugPrint('❌ Error updating leave status: $e');
+      rethrow;
+    }
+  }
+
+  /// Stream leave requests for the current user (Real-time)
+  Stream<List<LeaveRequest>> streamMyLeaveRequests() {
+    return _supabase
+        .from('leave_requests')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', _supabase.auth.currentUser!.id)
+        .order('created_at', ascending: false)
+        .map(
+            (data) => data.map((json) => LeaveRequest.fromJson(json)).toList());
+  }
+
+  /// Stream all leave requests for Admin (Real-time)
+  /// Note: .stream() does not support complex joins like .select('*, profiles(*)').
+  /// We will stream the requests and fetch profiles separately or rely on caching/join-in-memory if needed.
+  /// However, for the list view, we need user names.
+  /// Strategy: Stream the IDs/Status, and use a FutureBuilder for details OR restart stream on changes?
+  /// Better Strategy: Use the `admin_leave_requests_view`!
+  /// But Realtime on View requires extra setup.
+  /// Simpler: Stream `leave_requests` and for each item in the list, we show the data.
+  /// BUT we need the name.
+  /// Let's use the .stream() but fetch profiles in the UI or fetch all profiles once.
+  /// Actually, best UX: Stream logic in the Service returns a Stream of enriched objects? No, too complex.
+  /// Let's stick to: Stream the raw requests, and in the UI, use a `FutureBuilder` to get the name if missing?
+  /// OR, since the user already has `getAllLeaveRequests` which does a join, we can just poll it?
+  /// User wanted IMMEDIATE updates.
+  /// Let's try to stream `leave_requests` and whenever it emits, we call `getAllLeaveRequests()` to fetch full data.
+  Stream<List<LeaveRequest>> streamAllLeaveRequests() {
+    return _supabase
+        .from('leave_requests')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .asyncMap((_) async => await getAllLeaveRequests());
+  }
+
+  // --- App Updates ---
+
+  Future<AppVersion?> checkForUpdates() async {
+    try {
+      debugPrint('🔄 Checking for app updates...');
+
+      // Get current app version
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      int currentVersionCode = int.parse(packageInfo.buildNumber);
+      debugPrint('📱 Current Version Code: $currentVersionCode');
+
+      // Get latest version from DB
+      final response = await _supabase
+          .from('app_versions')
+          .select()
+          .order('version_code', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) {
+        debugPrint('✅ No update information found in DB.');
+        return null;
+      }
+
+      final latestVersion = AppVersion.fromJson(response);
+      debugPrint('🚀 Latest Version Code: ${latestVersion.versionCode}');
+
+      if (latestVersion.versionCode > currentVersionCode) {
+        debugPrint('🌟 Update Available!');
+        return latestVersion;
+      } else {
+        debugPrint('✅ App is up to date.');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking for updates: $e');
+      return null;
+    }
+  }
+
+  Future<void> launchUpdateUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch user url');
+    }
+  }
+
+  Future<void> publishAppVersion({
+    required int versionCode,
+    required String versionName,
+    required String apkUrl,
+    required String releaseNotes,
+    required bool forceUpdate,
+  }) async {
+    try {
+      await _supabase.from('app_versions').insert({
+        'version_code': versionCode,
+        'version_name': versionName,
+        'apk_url': apkUrl,
+        'release_notes': releaseNotes,
+        'force_update': forceUpdate,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      debugPrint('✅ App version published successfully!');
+    } catch (e) {
+      debugPrint('❌ Error publishing app version: $e');
+      rethrow;
+    }
   }
 }

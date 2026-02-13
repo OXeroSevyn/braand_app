@@ -30,15 +30,16 @@ class UserAvatar extends StatelessWidget {
         shape: BoxShape.circle,
         border: showBorder
             ? Border.all(
-                color: isDark ? Colors.white : Colors.black,
+                color: isDark ? Colors.white : Colors.white,
                 width: 2,
               )
             : null,
         boxShadow: showBorder
-            ? const [
+            ? [
                 BoxShadow(
-                  color: Color(0xFFCDFF00), // Brand color shadow
-                  offset: Offset(2, 2),
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,

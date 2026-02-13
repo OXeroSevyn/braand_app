@@ -24,8 +24,26 @@ class NeoButton extends StatefulWidget {
   State<NeoButton> createState() => _NeoButtonState();
 }
 
-class _NeoButtonState extends State<NeoButton> {
+class _NeoButtonState extends State<NeoButton>
+    with SingleTickerProviderStateMixin {
   bool _isPressed = false;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+        duration: const Duration(milliseconds: 100), vsync: this);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,19 +52,29 @@ class _NeoButtonState extends State<NeoButton> {
         widget.color ?? (isDark ? AppColors.brand : Colors.black);
     final effectiveTextColor =
         widget.textColor ?? (isDark ? Colors.black : Colors.white);
-    final shadowColor = isDark ? Colors.white : Colors.black.withOpacity(0.2);
+
+    // Soft glow matching the button color
+    final shadowColor = effectiveColor.withOpacity(0.4);
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+        _controller.forward();
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        _controller.reverse();
+      },
+      onTapCancel: () {
+        setState(() => _isPressed = false);
+        _controller.reverse();
+      },
       onTap: widget.isLoading ? null : widget.onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        transform: Matrix4.translationValues(
-          _isPressed ? 2 : 0,
-          _isPressed ? 2 : 0,
-          0,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) => Transform.scale(
+          scale: _scaleAnimation.value,
+          child: child,
         ),
         child: Container(
           height: 56,
@@ -54,19 +82,16 @@ class _NeoButtonState extends State<NeoButton> {
             color: widget.isLoading
                 ? effectiveColor.withOpacity(0.7)
                 : effectiveColor,
-            border: Border.all(
-              color: isDark ? Colors.white : Colors.transparent,
-              width: 2,
-            ),
-            boxShadow: _isPressed
-                ? []
-                : [
-                    BoxShadow(
-                      color: shadowColor,
-                      offset: const Offset(6, 6),
-                      blurRadius: 0,
-                    ),
-                  ],
+            borderRadius: BorderRadius.circular(16), // Rounded pill/rect
+            boxShadow: [
+              if (!_isPressed && !widget.isLoading)
+                BoxShadow(
+                  color: shadowColor,
+                  offset: const Offset(0, 8),
+                  blurRadius: 16,
+                  spreadRadius: -4,
+                ),
+            ],
           ),
           child: Center(
             child: widget.isLoading
@@ -84,15 +109,20 @@ class _NeoButtonState extends State<NeoButton> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (widget.icon != null) ...[
-                        widget.icon!,
+                        IconTheme(
+                          data: IconThemeData(color: effectiveTextColor),
+                          child: widget.icon!,
+                        ),
                         const SizedBox(width: 8),
                       ],
                       Text(
                         widget.text.toUpperCase(),
-                        style: GoogleFonts.spaceMono(
+                        style: GoogleFonts.spaceGrotesk(
+                          // Changed from Mono for cleaner look
                           color: effectiveTextColor,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
+                          letterSpacing: 1.0,
+                          fontSize: 14,
                         ),
                       ),
                     ],

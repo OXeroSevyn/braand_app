@@ -20,6 +20,8 @@ import 'profile_screen.dart';
 import 'user_management_screen.dart';
 import 'admin_employee_list_screen.dart';
 import 'notice_board_screen.dart';
+import 'admin_leave_screen.dart';
+import 'admin_release_screen.dart';
 
 class AdminView extends StatefulWidget {
   const AdminView({super.key});
@@ -65,8 +67,8 @@ class _AdminViewState extends State<AdminView> {
     _unreadCheckTimer = Timer.periodic(const Duration(seconds: 2), (
       timer,
     ) async {
-      if (mounted && _currentIndex != 5) {
-        // Only check when not on Messages tab (index 5)
+      if (mounted && _currentIndex != 3) {
+        // Only check when not on Messages tab (index 3)
         try {
           final auth = Provider.of<AuthProvider>(context, listen: false);
           if (auth.user != null) {
@@ -80,7 +82,7 @@ class _AdminViewState extends State<AdminView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 5) {
+      } else if (mounted && _currentIndex == 3) {
         // Clear badge when on Messages tab
         if (_unreadCount > 0) {
           setState(() {
@@ -139,12 +141,8 @@ class _AdminViewState extends State<AdminView> {
           : _currentIndex == 1
               ? AttendanceScreen(user: user, isAdminView: true)
               : _currentIndex == 2
-                  ? const InsightsScreen()
-                  : _currentIndex == 3
-                      ? const AdminEmployeeListScreen()
-                      : _currentIndex == 4
-                          ? NoticeBoardScreen(user: user)
-                          : MessagesScreen(user: user, isAdminView: true),
+                  ? const AdminLeaveScreen()
+                  : MessagesScreen(user: user, isAdminView: true),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -179,16 +177,8 @@ class _AdminViewState extends State<AdminView> {
               label: 'ATTENDANCE',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.analytics),
-              label: 'INSIGHTS',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.people),
-              label: 'EMPLOYEES',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.assignment),
-              label: 'NOTICES',
+              icon: Icon(Icons.flight_takeoff),
+              label: 'LEAVES',
             ),
             BottomNavigationBarItem(
               icon: Stack(
@@ -231,144 +221,230 @@ class _AdminViewState extends State<AdminView> {
   }
 
   Widget _buildDashboard() {
+    final user = Provider.of<AuthProvider>(context).user;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Simple Header
-          Container(
-            padding: const EdgeInsets.only(left: 16),
-            decoration: const BoxDecoration(
-              border: Border(
-                left: BorderSide(color: AppColors.brand, width: 4),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          // 1. Clean Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'GLOBAL OPS',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Row(
                     children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppColors.brand,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        'GLOBAL OPS',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 32,
+                        'SYSTEM LIVE',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 10,
+                          color: Colors.grey,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.brand,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'SYSTEM LIVE',
-                            style: GoogleFonts.spaceMono(
-                              fontSize: 12,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
-                ),
-                // Office Locations Button
-                IconButton(
-                  icon: const Icon(Icons.location_on, size: 28),
-                  onPressed: () {
+                ],
+              ),
+              // Profile Picture
+              GestureDetector(
+                onTap: () {
+                  if (user != null) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const OfficeLocationsScreen(),
+                        builder: (context) => ProfileScreen(user: user),
                       ),
                     );
-                  },
-                  tooltip: 'Office Locations',
+                  }
+                },
+                child: UserAvatar(
+                  avatarUrl: user?.avatar ?? '',
+                  name: user?.name ?? 'Admin',
+                  size: 48,
+                  showBorder: true,
                 ),
-                // Office Hours Button
-                IconButton(
-                  icon: const Icon(Icons.access_time, size: 28),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const OfficeHoursSettingsScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: 'Office Hours',
-                ),
-                // Notification Settings Button
-                IconButton(
-                  icon: const Icon(Icons.notifications_active, size: 28),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const NotificationSettingsScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: 'Notification Settings',
-                ),
-                // Profile Button
-                IconButton(
-                  icon: const Icon(Icons.account_circle, size: 28),
-                  onPressed: () {
-                    final currentUser =
-                        Provider.of<AuthProvider>(context, listen: false).user;
-                    if (currentUser != null) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ProfileScreen(user: currentUser),
-                        ),
-                      );
-                    }
-                  },
-                  tooltip: 'Profile',
-                ),
-                // User Management Button
-                IconButton(
-                  icon: const Icon(Icons.manage_accounts, size: 28),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const UserManagementScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: 'Manage Users',
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
 
-          // Stats
+          // 2. Quick Actions Grid
+          Text(
+            'QUICK ACTIONS',
+            style: GoogleFonts.spaceMono(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildQuickActionsGrid(),
+          const SizedBox(height: 32),
+
+          // 3. Compact Stats
           _buildStats(),
           const SizedBox(height: 24),
 
-          // Employee Table
+          // 4. Employee Table
           _buildEmployeeTable(),
           const SizedBox(height: 24),
 
-          // Activity Feed
+          // 5. Activity Feed
           _buildActivityFeed(),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickActionsGrid() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final actions = [
+      {
+        'icon': Icons.people,
+        'label': 'EMPLOYEES',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const AdminEmployeeListScreen())),
+      },
+      {
+        'icon': Icons.manage_accounts,
+        'label': 'ACCESS',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const UserManagementScreen())),
+      },
+      {
+        'icon': Icons.analytics,
+        'label': 'INSIGHTS',
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const InsightsScreen())),
+      },
+      {
+        'icon': Icons.assignment,
+        'label': 'NOTICES',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => NoticeBoardScreen(
+                      user: Provider.of<AuthProvider>(context, listen: false)
+                          .user!,
+                    ))),
+      },
+      {
+        'icon': Icons.location_on,
+        'label': 'LOCATIONS',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const OfficeLocationsScreen())),
+      },
+      {
+        'icon': Icons.access_time,
+        'label': 'SHIFTS',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const OfficeHoursSettingsScreen())),
+      },
+      {
+        'icon': Icons.rocket_launch,
+        'label': 'RELEASES',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const AdminReleaseScreen())),
+      },
+      {
+        'icon': Icons.notifications_active,
+        'label': 'ALERTS',
+        'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const NotificationSettingsScreen())),
+      },
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4, // 4 Columns for cleaner look
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.85, // Taller for text
+      ),
+      itemCount: actions.length,
+      itemBuilder: (context, index) {
+        final action = actions[index];
+        return Material(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: action['onTap'] as VoidCallback,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black12,
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black26 : Colors.grey[50],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      action['icon'] as IconData,
+                      size: 24,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    action['label'] as String,
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -387,36 +463,42 @@ class _AdminViewState extends State<AdminView> {
       }
     }
 
-    return Column(
+    return Row(
       children: [
         // Total Staff Card
-        _buildStatCard(
-          'TOTAL STAFF',
-          totalStaff,
-          isDark ? Colors.white : Colors.black,
-          Icons.people,
-          isDark,
+        Expanded(
+          child: _buildStatCard(
+            'TOTAL\nSTAFF',
+            totalStaff,
+            isDark ? Colors.white : Colors.black,
+            Icons.people,
+            isDark,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(width: 12),
 
         // Online Now Card
-        _buildStatCard(
-          'ONLINE NOW',
-          onlineCount,
-          AppColors.brand,
-          Icons.bolt,
-          isDark,
-          isHighlight: true,
+        Expanded(
+          child: _buildStatCard(
+            'ONLINE\nNOW',
+            onlineCount,
+            AppColors.brand,
+            Icons.bolt,
+            isDark,
+            isHighlight: true,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(width: 12),
 
         // On Break Card
-        _buildStatCard(
-          'ON BREAK',
-          onBreakCount,
-          isDark ? Colors.white : Colors.black,
-          Icons.coffee,
-          isDark,
+        Expanded(
+          child: _buildStatCard(
+            'ON\nBREAK',
+            onBreakCount,
+            isDark ? Colors.white : Colors.black,
+            Icons.coffee,
+            isDark,
+          ),
         ),
       ],
     );
@@ -425,63 +507,65 @@ class _AdminViewState extends State<AdminView> {
   Widget _buildStatCard(
     String label,
     int count,
-    Color borderColor,
+    Color borderColor, // Kept for API signature, used as accent
     IconData icon,
     bool isDark, {
     bool isHighlight = false,
   }) {
+    final cardColor = isHighlight
+        ? AppColors.brand
+        : (isDark ? AppColors.darkSurface : Colors.white);
+
+    // For highlighted card, text should be black. For dark mode card, text white.
+    final textColor =
+        isHighlight ? Colors.black : (isDark ? Colors.white : Colors.black);
+    final labelColor =
+        isHighlight ? Colors.black.withOpacity(0.7) : Colors.grey;
+
     return Container(
+      height: 160,
       decoration: BoxDecoration(
-        color: isHighlight
-            ? AppColors.brand
-            : (isDark ? AppColors.darkSurface : Colors.white),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        // Removed heavy shadow for cleaner look
         border: Border.all(
-          color: isDark ? Colors.white : Colors.black,
-          width: 2,
+          color: isDark ? Colors.white10 : Colors.black12,
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black : Colors.black,
-            offset: const Offset(6, 6),
-          ),
-        ],
       ),
-      padding: const EdgeInsets.all(20),
-      child: Row(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
                 style: GoogleFonts.spaceMono(
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: isHighlight
-                      ? Colors.black
-                      : (isDark ? Colors.grey : Colors.grey[600]),
-                  letterSpacing: 1,
+                  color: labelColor,
+                  height: 1.2,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                count.toString(),
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w900,
-                  color: isHighlight ? Colors.black : null,
-                  height: 1,
-                ),
+              Icon(
+                icon,
+                size: 20,
+                color: textColor.withOpacity(0.5),
               ),
             ],
           ),
-          Icon(
-            icon,
-            size: 32,
-            color: isHighlight
-                ? Colors.black
-                : (isDark ? Colors.white : Colors.black),
+          Text(
+            count.toString(),
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+              height: 1,
+            ),
           ),
         ],
       ),
@@ -743,10 +827,8 @@ class _AdminViewState extends State<AdminView> {
                       height: 32,
                       decoration: BoxDecoration(
                         color: iconColor,
-                        border: Border.all(
-                          color: isDark ? Colors.white : Colors.black,
-                          width: 2,
-                        ),
+                        borderRadius: BorderRadius.circular(8), // Rounded
+                        // Removed hard border
                       ),
                       child: Icon(
                         iconData,
