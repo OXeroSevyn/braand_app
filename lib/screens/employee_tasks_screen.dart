@@ -3,9 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../constants.dart';
+import '../models/monthly_task.dart';
 import '../models/task.dart';
 import '../models/user.dart';
 import '../services/supabase_service.dart';
+import '../widgets/liquid_progress_bar.dart';
 import '../widgets/neo_card.dart';
 
 class EmployeeTasksScreen extends StatefulWidget {
@@ -29,6 +31,11 @@ class _EmployeeTasksScreenState extends State<EmployeeTasksScreen> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
 
+  // Monthly tasks
+  List<Map<String, dynamic>> _monthlyTasks = [];
+  // Daily tasks
+  List<MonthlyTask> _dailyTasks = [];
+
   @override
   void initState() {
     super.initState();
@@ -49,9 +56,24 @@ class _EmployeeTasksScreenState extends State<EmployeeTasksScreen> {
         widget.user.id,
         _selectedDate,
       );
+      // Load monthly tasks for current month
+      final monthlyTasks = await _supabaseService.getMonthlyTasks(
+        month: DateTime.now().month,
+        year: DateTime.now().year,
+        userId: widget.user.id,
+      );
+      // Load daily tasks for selected date
+      final dailyTasksData = await _supabaseService.getDailyTasks(
+        date: _selectedDate,
+        userId: widget.user.id,
+      );
+      final dailyTasks =
+          dailyTasksData.map((task) => MonthlyTask.fromJson(task)).toList();
       if (mounted) {
         setState(() {
           _tasks = tasks;
+          _monthlyTasks = monthlyTasks;
+          _dailyTasks = dailyTasks;
         });
       }
     } catch (e) {
@@ -152,6 +174,47 @@ class _EmployeeTasksScreenState extends State<EmployeeTasksScreen> {
       await _loadTasks();
     } catch (e) {
       debugPrint('Error deleting task: $e');
+    }
+  }
+
+  Future<void> _updateMonthlyTaskStatus(String taskId, String status) async {
+    try {
+      await _supabaseService.updateMonthlyTaskStatus(
+        taskId: taskId,
+        userId: widget.user.id,
+        status: status,
+      );
+      await _loadTasks();
+    } catch (e) {
+      debugPrint('Error updating monthly task status: $e');
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Completed':
+        return Colors.green;
+      case 'In Progress':
+        return Colors.blue;
+      case 'On Hold':
+        return Colors.orange;
+      case 'Review':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getPriorityColor(String priority) {
+    switch (priority) {
+      case 'Urgent':
+        return Colors.red[900]!;
+      case 'High':
+        return Colors.red;
+      case 'Low':
+        return Colors.green;
+      default:
+        return Colors.orange; // Medium
     }
   }
 
@@ -266,6 +329,311 @@ class _EmployeeTasksScreenState extends State<EmployeeTasksScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Monthly Tasks Section
+            if (_monthlyTasks.isNotEmpty) ...[
+              NeoCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_month, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'MONTHLY TASKS',
+                          style: GoogleFonts.spaceMono(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ..._monthlyTasks.map((task) {
+                      // Get completion status
+                      final userTaskData = task['user_monthly_tasks'];
+                      String status = 'Pending';
+                      if (userTaskData != null &&
+                          userTaskData.isNotEmpty &&
+                          userTaskData[0]['status'] != null) {
+                        status = userTaskData[0]['status'];
+                      }
+                      final isCompleted = status == 'Completed';
+                      final priority = task['priority'] ?? 'Medium';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.black
+                              : (isCompleted
+                                  ? Colors.green[50]
+                                  : Colors.grey[100]),
+                          border: Border.all(
+                            color: isDark ? Colors.white : Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            PopupMenuButton<String>(
+                              tooltip: 'Change Status',
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color:
+                                      _getStatusColor(status).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                      color: _getStatusColor(status)),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: GoogleFonts.spaceMono(
+                                    color: _getStatusColor(status),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              onSelected: (val) =>
+                                  _updateMonthlyTaskStatus(task['id'], val),
+                              itemBuilder: (context) => [
+                                'Pending',
+                                'In Progress',
+                                'Completed',
+                                'On Hold',
+                                'Review'
+                              ]
+                                  .map((s) => PopupMenuItem(
+                                      value: s,
+                                      child: Text(s,
+                                          style: GoogleFonts.spaceMono())))
+                                  .toList(),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: _getPriorityColor(priority),
+                                          borderRadius:
+                                              BorderRadius.circular(2),
+                                        ),
+                                        child: Text(
+                                          priority.toUpperCase(),
+                                          style: GoogleFonts.spaceMono(
+                                            fontSize: 8,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          task['title'],
+                                          style: GoogleFonts.spaceMono(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            decoration: isCompleted
+                                                ? TextDecoration.lineThrough
+                                                : TextDecoration.none,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (task['description'] != null &&
+                                      task['description']
+                                          .toString()
+                                          .isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      task['description'],
+                                      style: GoogleFonts.spaceMono(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Daily Tasks Section forselected date
+            if (_dailyTasks.isNotEmpty) ...[
+              NeoCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.today, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'TODAY\'S ASSIGNED TASKS',
+                          style: GoogleFonts.spaceMono(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ..._dailyTasks.map((task) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.black
+                              : (task.isCompleted
+                                  ? Colors.green[50]
+                                  : Colors.grey[100]),
+                          border: Border.all(
+                            color: isDark ? Colors.white : Colors.black,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                PopupMenuButton<String>(
+                                  tooltip: 'Change Status',
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(task.status)
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                          color: _getStatusColor(task.status)),
+                                    ),
+                                    child: Text(
+                                      task.status,
+                                      style: GoogleFonts.spaceMono(
+                                        color: _getStatusColor(task.status),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  onSelected: (val) =>
+                                      _updateMonthlyTaskStatus(task.id, val),
+                                  itemBuilder: (context) => [
+                                    'Pending',
+                                    'In Progress',
+                                    'Completed',
+                                    'On Hold',
+                                    'Review'
+                                  ]
+                                      .map((s) => PopupMenuItem(
+                                          value: s,
+                                          child: Text(s,
+                                              style: GoogleFonts.spaceMono())))
+                                      .toList(),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 4, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: _getPriorityColor(
+                                                  task.priority),
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                            child: Text(
+                                              task.priority.toUpperCase(),
+                                              style: GoogleFonts.spaceMono(
+                                                fontSize: 8,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              task.title,
+                                              style: GoogleFonts.spaceMono(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: task.isCompleted
+                                                    ? TextDecoration.lineThrough
+                                                    : TextDecoration.none,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (task.description != null &&
+                                          task.description!.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          task.description!,
+                                          style: GoogleFonts.spaceMono(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Progress bar (if time limit exists)
+                            if (task.timeLimitHours != null) ...[
+                              const SizedBox(height: 12),
+                              LiquidProgressBar(
+                                progress: task.progressPercentage,
+                                timeRemaining: task.timeRemainingText,
+                                isOverdue: task.isOverdue,
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Add task form
             NeoCard(

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../widgets/continuous_banner.dart';
 import '../constants.dart';
 import '../models/user.dart';
 import '../models/attendance_record.dart';
@@ -20,6 +21,8 @@ import '../services/office_hours_service.dart';
 import 'profile_screen.dart';
 import 'notice_board_screen.dart';
 import 'leave_screen.dart';
+import 'leaderboard_screen.dart';
+import '../services/notification_service.dart';
 
 class EmployeeView extends StatefulWidget {
   final User user;
@@ -48,6 +51,10 @@ class _EmployeeViewState extends State<EmployeeView> {
     _loadData();
     _startAutoRefresh();
     _startUnreadCheck();
+
+    // Initialize Notifications
+    NotificationService().initialize();
+    NotificationService().listenForTableNotifications(widget.user.id);
   }
 
   @override
@@ -67,8 +74,8 @@ class _EmployeeViewState extends State<EmployeeView> {
   void _startUnreadCheck() {
     _unreadCheckTimer =
         Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (mounted && _currentIndex != 4) {
-        // Only check when not on Messages tab
+      if (mounted && _currentIndex != 3) {
+        // Only check when not on Messages tab (index 3 now)
         try {
           final count = await _supabaseService.getUnreadCount(widget.user.id);
           if (mounted) {
@@ -79,7 +86,7 @@ class _EmployeeViewState extends State<EmployeeView> {
         } catch (e) {
           debugPrint('Error checking unread count: $e');
         }
-      } else if (mounted && _currentIndex == 4) {
+      } else if (mounted && _currentIndex == 3) {
         // Clear badge when on Messages tab
         if (_unreadCount > 0) {
           setState(() {
@@ -285,11 +292,9 @@ class _EmployeeViewState extends State<EmployeeView> {
         children: [
           _buildDashboard(),
           AttendanceScreen(user: widget.user),
-          const LeaveScreen(),
           EmployeeTasksScreen(user: widget.user),
-          NoticeBoardScreen(user: widget.user),
           MessagesScreen(user: widget.user),
-          ProfileScreen(user: widget.user),
+          _buildMenuScreen(), // New menu screen
         ],
       ),
       bottomNavigationBar: Container(
@@ -319,23 +324,15 @@ class _EmployeeViewState extends State<EmployeeView> {
           items: [
             const BottomNavigationBarItem(
               icon: Icon(Icons.dashboard),
-              label: 'DASHBOARD',
+              label: 'HOME',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.calendar_month),
               label: 'ATTENDANCE',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.flight_takeoff),
-              label: 'LEAVES',
-            ),
-            const BottomNavigationBarItem(
               icon: Icon(Icons.checklist),
               label: 'TASKS',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.assignment),
-              label: 'NOTICES',
             ),
             BottomNavigationBarItem(
               icon: Stack(
@@ -372,8 +369,8 @@ class _EmployeeViewState extends State<EmployeeView> {
               label: 'MESSAGES',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.account_circle),
-              label: 'PROFILE',
+              icon: Icon(Icons.menu),
+              label: 'MENU',
             ),
           ],
         ),
@@ -381,27 +378,205 @@ class _EmployeeViewState extends State<EmployeeView> {
     );
   }
 
-  Widget _buildDashboard() {
+  Widget _buildMenuScreen() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.only(left: 16),
+            decoration: const BoxDecoration(
+              border: Border(
+                left: BorderSide(color: AppColors.brand, width: 4),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MENU',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Additional features and settings',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          NeoCard(
+            child: Column(
+              children: [
+                _buildMenuItem(
+                  icon: Icons.account_circle,
+                  title: 'Profile',
+                  subtitle: 'View and edit your profile',
+                  isDark: isDark,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(user: widget.user),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                _buildMenuItem(
+                  icon: Icons.leaderboard,
+                  title: 'Ranking',
+                  subtitle: 'View leaderboard rankings',
+                  isDark: isDark,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaderboardScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                _buildMenuItem(
+                  icon: Icons.flight_takeoff,
+                  title: 'Leave Requests',
+                  subtitle: 'Submit and manage leaves',
+                  isDark: isDark,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                _buildMenuItem(
+                  icon: Icons.assignment,
+                  title: 'Notice Board',
+                  subtitle: 'View announcements',
+                  isDark: isDark,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            NoticeBoardScreen(user: widget.user),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black : Colors.grey[100],
+                  border: Border.all(
+                    color: isDark ? Colors.white : Colors.black,
+                    width: 2,
+                  ),
+                ),
+                child: Icon(icon, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 11,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.zero,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const ClockWidget(),
-          const SizedBox(height: 16),
-          LocationStatusWidget(),
-          const SizedBox(height: 24),
+          ContinuousBanner(isDark: isDark),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const ClockWidget(),
+                const SizedBox(height: 16),
+                LocationStatusWidget(),
+                const SizedBox(height: 24),
 
-          // Actions
-          _buildActions(),
-          const SizedBox(height: 24),
+                // Actions
+                _buildActions(),
+                const SizedBox(height: 24),
 
-          // Charts & AI
-          _buildChartsAndAI(),
-          const SizedBox(height: 24),
+                // Charts & AI
+                _buildChartsAndAI(),
+                const SizedBox(height: 24),
 
-          // Logs
-          _buildLogs(),
+                // Logs
+                _buildLogs(),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -6,6 +6,11 @@ import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../models/user.dart';
 import '../services/supabase_service.dart';
+import '../widgets/glass_container.dart';
+import '../widgets/user_avatar.dart';
+import '../widgets/messages/quick_contact_selector.dart';
+import '../widgets/messages/gradient_message_bubble.dart';
+import '../widgets/messages/floating_input_bar.dart';
 
 class MessagesScreen extends StatefulWidget {
   final User user;
@@ -50,9 +55,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   void _startAutoRefresh() {
-    // Auto-refresh every 0.5 seconds
-    _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (mounted) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (mounted && _selectedUser != null) {
         _loadMessages(silent: true);
       }
     });
@@ -63,24 +67,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
     try {
       if (widget.isAdminView) {
-        // Admin: load all active employees
         final users = await _supabaseService.getAllEmployees();
         if (mounted) {
           setState(() {
             _allUsers = users;
-            // Default select the first user if available
             if (users.isNotEmpty && _selectedUser == null) {
               _selectedUser = users.first;
             }
           });
         }
       } else {
-        // Employee: load all admins
         final admins = await _supabaseService.getAllAdmins();
         if (mounted) {
           setState(() {
             _allUsers = admins;
-            // Default select the first admin if available
             if (admins.isNotEmpty && _selectedUser == null) {
               _selectedUser = admins.first;
             }
@@ -102,32 +102,22 @@ class _MessagesScreenState extends State<MessagesScreen> {
     try {
       List<Map<String, dynamic>> messages;
 
-      if (widget.isAdminView && _selectedUser != null) {
-        // Admin: load conversation with selected user
-        messages = await _supabaseService.getConversation(
-          widget.user.id,
-          _selectedUser!.id,
-        );
-      } else if (!widget.isAdminView && _selectedUser != null) {
-        // Employee: load conversation with selected Admin
+      if (_selectedUser != null) {
         messages = await _supabaseService.getConversation(
           widget.user.id,
           _selectedUser!.id,
         );
       } else {
-        // Fallback/Empty state
         messages = [];
       }
 
       if (mounted) {
-        // Check if new messages arrived
         final hasNewMessages = messages.length > _previousMessageCount;
 
         setState(() {
           _messages = messages;
         });
 
-        // Play sound if new message arrived (only when not silent and not first load)
         if (hasNewMessages && !silent && _previousMessageCount > 0) {
           _playNotificationSound();
         }
@@ -141,7 +131,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Future<void> _playNotificationSound() async {
     try {
-      // Play system notification sound
       await SystemSound.play(SystemSoundType.alert);
     } catch (e) {
       debugPrint('Error playing sound: $e');
@@ -166,7 +155,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
       _messageController.clear();
       await _loadMessages();
 
-      // Scroll to bottom
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0,
@@ -177,9 +165,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
     } catch (e) {
       debugPrint('Error sending message: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send message: $e')));
       }
     } finally {
       if (mounted) {
@@ -194,153 +181,125 @@ class _MessagesScreenState extends State<MessagesScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return RefreshIndicator(
-      onRefresh: () => _loadMessages(),
-      child: Column(
-        children: [
-          _buildHeader(),
-          if (_allUsers.isNotEmpty) _buildUserSelector(),
-          Expanded(child: _buildMessageList()),
-          _buildMessageInput(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: AppColors.brand, width: 4)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'MESSAGES',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  widget.isAdminView
-                      ? 'Chat with employees'
-                      : 'Chat with admin',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserSelector() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          border: Border.all(
-            color: isDark ? Colors.white : Colors.black,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.white : Colors.black,
-              offset: const Offset(4, 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      ),
+      child: Column(
+        children: [
+          _buildHeader(isDark),
+          if (_allUsers.isNotEmpty)
+            QuickContactSelector(
+              users: _allUsers,
+              selectedUser: _selectedUser,
+              onUserSelected: (user) {
+                setState(() {
+                  _selectedUser = user;
+                  _previousMessageCount = 0;
+                });
+                _loadMessages();
+              },
             ),
-          ],
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<User>(
-            value: _selectedUser,
-            isExpanded: true,
-            icon: const Icon(Icons.arrow_drop_down),
-            style: GoogleFonts.spaceMono(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-            dropdownColor: isDark ? AppColors.darkSurface : Colors.white,
-            items: _allUsers.map((user) {
-              return DropdownMenuItem<User>(
-                value: user,
-                child: Row(
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.black : Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+                child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: AppColors.brand,
-                      child: Text(
-                        user.name.isNotEmpty ? user.name[0] : '?',
-                        style: GoogleFonts.spaceMono(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        user.name,
-                        style: GoogleFonts.spaceMono(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
+                    Expanded(child: _buildMessageList(isDark)),
+                    FloatingInputBar(
+                      controller: _messageController,
+                      onSend: _sendMessage,
+                      isSending: _isSending,
                     ),
                   ],
                 ),
-              );
-            }).toList(),
-            onChanged: (User? newUser) {
-              if (newUser != null) {
-                setState(() {
-                  _selectedUser = newUser;
-                  _previousMessageCount = 0; // Reset count for new conversation
-                });
-                _loadMessages();
-              }
-            },
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildMessageList() {
+  Widget _buildHeader(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MESSAGES',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      height: 1.0,
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  Text(
+                    widget.isAdminView ? 'TEAM CHAT' : 'ADMIN SUPPORT',
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 12,
+                      color: AppColors.brand,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+              GlassContainer(
+                padding: const EdgeInsets.all(10),
+                borderRadius: BorderRadius.circular(50),
+                opacity: 0.1,
+                child: Icon(Icons.chat_bubble_outline,
+                    color: isDark ? Colors.white : Colors.black),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageList(bool isDark) {
     if (_messages.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+            GlassContainer(
+              padding: const EdgeInsets.all(32),
+              borderRadius: BorderRadius.circular(100),
+              opacity: 0.05,
+              child: Icon(Icons.mark_chat_unread_outlined,
+                  size: 48, color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             Text(
-              'No messages yet',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              'Start a conversation',
+              style: GoogleFonts.spaceMono(
+                color: Colors.grey,
+                fontSize: 14,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.isAdminView
-                  ? 'Start a conversation'
-                  : 'No messages from admin',
-              style: GoogleFonts.spaceMono(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
@@ -350,176 +309,31 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return ListView.builder(
       controller: _scrollController,
       reverse: true,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final message = _messages[index];
         final isMe = message['sender_id'] == widget.user.id;
-        final senderName = message['sender']?['name'] ?? 'Unknown';
         final messageText = message['message'] ?? '';
         final createdAt = DateTime.parse(message['created_at']);
 
-        return _buildMessageBubble(messageText, senderName, createdAt, isMe);
+        // Check if next message is from same sender (to group bubbles)
+        // Since list is reversed, "next" is actually index - 1
+        bool isFirstInSequence = true;
+        if (index < _messages.length - 1) {
+          final prevMsg = _messages[index + 1]; // "Previous" message in time
+          if (prevMsg['sender_id'] == message['sender_id']) {
+            isFirstInSequence = false;
+          }
+        }
+
+        return GradientMessageBubble(
+          message: messageText,
+          timestamp: createdAt,
+          isMe: isMe,
+          isFirstInSequence: isFirstInSequence,
+        );
       },
-    );
-  }
-
-  Widget _buildMessageBubble(
-    String message,
-    String senderName,
-    DateTime timestamp,
-    bool isMe,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isMe) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.brand,
-              child: Text(
-                senderName.isNotEmpty ? senderName[0] : '?',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isMe
-                    ? AppColors.brand
-                    : (isDark ? AppColors.darkSurface : Colors.white),
-                border: Border.all(
-                  color: isDark ? Colors.white : Colors.black,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.white : Colors.black,
-                    offset: const Offset(2, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isMe)
-                    Text(
-                      senderName.toUpperCase(),
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.brand,
-                      ),
-                    ),
-                  Text(
-                    message,
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 14,
-                      color: isMe ? Colors.black : null,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('MMM d, h:mm a').format(timestamp),
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 10,
-                      color: isMe ? Colors.black54 : Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isMe) const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageInput() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.white : Colors.black,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.black : Colors.grey[100],
-                border: Border.all(
-                  color: isDark ? Colors.white : Colors.black,
-                  width: 2,
-                ),
-              ),
-              child: TextField(
-                controller: _messageController,
-                style: GoogleFonts.spaceMono(),
-                decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: GoogleFonts.spaceMono(color: Colors.grey),
-                  border: InputBorder.none,
-                ),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: _isSending ? null : _sendMessage,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.brand,
-                border: Border.all(
-                  color: isDark ? Colors.white : Colors.black,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.white : Colors.black,
-                    offset: const Offset(4, 4),
-                  ),
-                ],
-              ),
-              child: _isSending
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.black,
-                      ),
-                    )
-                  : const Icon(Icons.send, color: Colors.black, size: 24),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

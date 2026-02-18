@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import 'office_hours_service.dart';
+import '../models/attendance_record.dart';
 
 /// Background service to auto sign-out employees at office closing time
 class AutoSignOutService {
@@ -42,54 +43,68 @@ class AutoSignOutService {
     executionLogs.add('🕐 Starting Auto Sign-Out Check at ${DateTime.now()}');
 
     try {
-      // NOTE: We do not strictly check for Supabase.instance.client.auth.currentUser
-      // because we want this service to ATTEMPT to run if the app is open.
-      // RLS policies might still block it if no one is logged in, but we shouldn't abort proactively.
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        executionLogs.add('ℹ️ No user currently logged in. Skipping.');
+        return executionLogs;
+      }
 
       final officeHours = await _officeHoursService.checkOfficeHours();
       executionLogs.add('🏢 Office Hours Status:');
       executionLogs.add('   - Within Hours: ${officeHours.isWithinHours}');
       executionLogs.add('   - Is After Hours: ${officeHours.isAfterHours}');
 
-      if (officeHours.isBeforeHours)
-        executionLogs.add('   - 🕒 Current time is BEFORE office hours');
-      if (officeHours.isWithinHours)
-        executionLogs.add('   - 🕒 Current time is WITHIN office hours');
-
-      // --- NEW: ALWAYS Check for stale breaks (run every time) ---
+      // always check stale breaks
       final breakLogs = await _supabaseService.autoEndStaleBreaks();
       executionLogs.addAll(breakLogs);
 
-      // If we're outside office hours AND strictly AFTER hours, auto sign-out
       if (!officeHours.isWithinHours && officeHours.isAfterHours) {
-        debugPrint(
-            '🕐 After office hours, checking for users to auto sign-out');
-        executionLogs
-            .add('🚀 TRIGGERED: It is strictly after hours. Scanning users...');
+        executionLogs.add('🚀 TRIGGERED: It is strictly after hours.');
 
-        final result =
-            await _supabaseService.getUsersCurrentlySignedInWithLogs();
-        final signedInUsers = result['users'] as List<String>;
-        final scanLogs = result['logs'] as List<String>;
-        executionLogs.addAll(scanLogs);
+        // 1. Check if CURRENT user is an ADMIN
+        // We need to fetch the profile to know the role
+        final userProfile = await _supabaseService.getUserProfile(user.id);
 
-        if (signedInUsers.isNotEmpty) {
-          debugPrint('🕐 Found ${signedInUsers.length} users still signed in');
-
-          for (final userId in signedInUsers) {
-            final userLogs = await _supabaseService.autoSignOutUser(userId);
-            executionLogs.addAll(userLogs);
-          }
-
-          debugPrint('✅ Auto signed out ${signedInUsers.length} users');
-          executionLogs.add(
-              '✅ OPERATION COMPLETE: Processed ${signedInUsers.length} users.');
-        } else {
-          executionLogs.add('ℹ️ No users found signed in.');
+        if (userProfile != null && userProfile.role == 'Admin') {
+          executionLogs
+              .add('👮 Current user is ADMIN. Initiating Global Cleanup...');
+          final globalLogs = await _supabaseService.autoSignOutAllUsers();
+          executionLogs.addAll(globalLogs);
         }
-      } else {
-        // Reduced noise logging
-        // executionLogs.add('⏸️ SKIPPED: Not strictly after hours yet.');
+
+        // 2. ALWAYS Check current user Status (Self-Cleanup)
+        executionLogs.add('👤 Checking local user status...');
+
+        final now = DateTime.now();
+        final todayStart = DateTime(now.year, now.month, now.day);
+        final todayEnd = todayStart.add(const Duration(days: 1));
+
+        final records = await _supabaseService.getUserRecordsForDateRange(
+          user.id,
+          todayStart,
+          todayEnd,
+        );
+
+        final clockIns =
+            records.where((r) => r.type == AttendanceType.CLOCK_IN).toList();
+        final clockOuts =
+            records.where((r) => r.type == AttendanceType.CLOCK_OUT).toList();
+
+        if (clockIns.isNotEmpty && clockOuts.length < clockIns.length) {
+          executionLogs.add(
+              '   - ⚠️ Current user is still Clocked In. auto-signing out...');
+
+          // Database Clock Out
+          await _supabaseService.autoSignOutUser(user.id);
+          executionLogs.add('   - ✅ Database record updated.');
+
+          // Local Auth Logout
+          debugPrint('👋 Performing local logout for auto sign-out...');
+          await Supabase.instance.client.auth.signOut();
+          executionLogs.add('   - ✅ Local session cleared. User logged out.');
+        } else {
+          executionLogs.add('   - ✅ User is already clocked out.');
+        }
       }
     } catch (e) {
       debugPrint('❌ Error in auto sign-out check: $e');

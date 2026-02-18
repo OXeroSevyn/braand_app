@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../widgets/continuous_banner.dart';
+import '../widgets/employee_carousel.dart';
 import '../constants.dart';
 import '../models/user.dart';
 import '../models/attendance_record.dart';
@@ -19,9 +21,11 @@ import 'insights_screen.dart';
 import 'profile_screen.dart';
 import 'user_management_screen.dart';
 import 'admin_employee_list_screen.dart';
-import 'notice_board_screen.dart';
 import 'admin_leave_screen.dart';
+import 'notice_board_screen.dart';
 import 'admin_release_screen.dart';
+import 'leaderboard_screen.dart';
+import 'admin_performance_screen.dart';
 
 class AdminView extends StatefulWidget {
   const AdminView({super.key});
@@ -55,16 +59,16 @@ class _AdminViewState extends State<AdminView> {
   }
 
   void _startAutoRefresh() {
-    // Auto-refresh every 2 seconds
+    // Auto-refresh every 30 seconds to prevent ANR
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 2),
+      const Duration(seconds: 30),
       (_) => _loadData(),
     );
   }
 
   void _startUnreadCheck() {
-    // Check for unread messages every 2 seconds
-    _unreadCheckTimer = Timer.periodic(const Duration(seconds: 2), (
+    // Check for unread messages every 30 seconds
+    _unreadCheckTimer = Timer.periodic(const Duration(seconds: 30), (
       timer,
     ) async {
       if (mounted && _currentIndex != 3) {
@@ -141,8 +145,10 @@ class _AdminViewState extends State<AdminView> {
           : _currentIndex == 1
               ? AttendanceScreen(user: user, isAdminView: true)
               : _currentIndex == 2
-                  ? const AdminLeaveScreen()
-                  : MessagesScreen(user: user, isAdminView: true),
+                  ? const LeaderboardScreen()
+                  : _currentIndex == 3
+                      ? const AdminLeaveScreen()
+                      : MessagesScreen(user: user, isAdminView: true),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -175,6 +181,10 @@ class _AdminViewState extends State<AdminView> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.calendar_month),
               label: 'ATTENDANCE',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.leaderboard),
+              label: 'RANKING',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.flight_takeoff),
@@ -222,97 +232,107 @@ class _AdminViewState extends State<AdminView> {
 
   Widget _buildDashboard() {
     final user = Provider.of<AuthProvider>(context).user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.zero,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Clean Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'GLOBAL OPS',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
+          ContinuousBanner(isDark: isDark),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Clean Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'GLOBAL OPS',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.brand,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'SYSTEM LIVE',
+                              style: GoogleFonts.spaceMono(
+                                fontSize: 10,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.brand,
-                          shape: BoxShape.circle,
-                        ),
+                    // Profile Picture
+                    GestureDetector(
+                      onTap: () {
+                        if (user != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProfileScreen(user: user),
+                            ),
+                          );
+                        }
+                      },
+                      child: UserAvatar(
+                        avatarUrl: user?.avatar ?? '',
+                        name: user?.name ?? 'Admin',
+                        size: 48,
+                        showBorder: true,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'SYSTEM LIVE',
-                        style: GoogleFonts.spaceMono(
-                          fontSize: 10,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              // Profile Picture
-              GestureDetector(
-                onTap: () {
-                  if (user != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProfileScreen(user: user),
-                      ),
-                    );
-                  }
-                },
-                child: UserAvatar(
-                  avatarUrl: user?.avatar ?? '',
-                  name: user?.name ?? 'Admin',
-                  size: 48,
-                  showBorder: true,
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-          // 2. Quick Actions Grid
-          Text(
-            'QUICK ACTIONS',
-            style: GoogleFonts.spaceMono(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-              letterSpacing: 1,
+                // 2. Quick Actions Grid
+                Text(
+                  'QUICK ACTIONS',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildQuickActionsGrid(),
+                const SizedBox(height: 32),
+
+                // 3. Compact Stats
+                _buildStats(),
+                const SizedBox(height: 24),
+
+                // 4. Employee Table
+                _buildEmployeeTable(),
+                const SizedBox(height: 24),
+
+                // 5. Activity Feed
+                _buildActivityFeed(),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          _buildQuickActionsGrid(),
-          const SizedBox(height: 32),
-
-          // 3. Compact Stats
-          _buildStats(),
-          const SizedBox(height: 24),
-
-          // 4. Employee Table
-          _buildEmployeeTable(),
-          const SizedBox(height: 24),
-
-          // 5. Activity Feed
-          _buildActivityFeed(),
         ],
       ),
     );
@@ -381,10 +401,29 @@ class _AdminViewState extends State<AdminView> {
       {
         'icon': Icons.notifications_active,
         'label': 'ALERTS',
+        'onTap': () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const NotificationSettingsScreen()),
+          );
+          // Refresh data including banner when returning
+          if (mounted) {
+            _loadData(); // This refreshes admin data
+            // We need a way to refresh the banner specifically or ensure build is called
+            setState(() {
+              // Trigger rebuild to refresh banner
+            });
+          }
+        },
+      },
+      {
+        'icon': Icons.speed,
+        'label': 'PERFORMANCE',
         'onTap': () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (context) => const NotificationSettingsScreen())),
+                builder: (context) => const AdminPerformanceScreen())),
       },
     ];
 
@@ -573,166 +612,9 @@ class _AdminViewState extends State<AdminView> {
   }
 
   Widget _buildEmployeeTable() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return NeoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.work, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'WORKFORCE STATUS',
-                style: GoogleFonts.spaceMono(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Table Header
-          if (_employees.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      'EMPLOYEE',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'DEPT',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'STATUS',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          if (_employees.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  'NO EMPLOYEES',
-                  style: GoogleFonts.spaceMono(color: Colors.grey),
-                ),
-              ),
-            )
-          else
-            ..._employees.map((emp) {
-              final status = _getEmployeeStatus(emp.id);
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Avatar
-                    UserAvatar(
-                      avatarUrl: emp.avatar,
-                      name: emp.name,
-                      size: 36,
-                      showBorder: true,
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Name
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        emp.name.toLowerCase(),
-                        style: GoogleFonts.spaceMono(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-
-                    // Department
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        emp.department.toLowerCase(),
-                        style: GoogleFonts.spaceMono(
-                          fontSize: 11,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-
-                    // Status Badge
-                    Expanded(
-                      flex: 2,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[800] : Colors.grey[200],
-                            border: Border.all(
-                              color: isDark ? Colors.white : Colors.black,
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            status,
-                            style: GoogleFonts.spaceMono(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-        ],
-      ),
+    return EmployeeCarousel(
+      employees: _employees,
+      getStatus: _getEmployeeStatus,
     );
   }
 

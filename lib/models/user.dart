@@ -40,11 +40,12 @@ class User {
     final metadata = data['user_metadata'] ?? {};
     return User(
       id: data['id'],
-      name: metadata['name'] ?? 'Unknown',
+      name: metadata['name'] ?? metadata['full_name'] ?? 'Unknown',
       email: data['email'] ?? '',
       role: metadata['role'] ?? 'Employee',
       department: metadata['department'] ?? 'General',
-      avatar: metadata['avatar'],
+      avatar:
+          metadata['avatar'] ?? metadata['avatar_url'] ?? metadata['picture'],
       bio: metadata['bio'],
       phone: metadata['phone'],
       status: data['status'] ?? 'pending',

@@ -7,6 +7,12 @@ import 'dart:math' show cos, sqrt, asin;
 class LocationService {
   final SupabaseService _supabase = SupabaseService();
 
+  // Cache
+  List<OfficeLocation>? _cachedOffices;
+  DateTime? _lastOfficeFetchTime;
+  static const Duration _cacheDuration =
+      Duration(hours: 1); // Offices rarely change
+
   /// Check if location services are enabled
   Future<bool> isLocationServiceEnabled() async {
     return await Geolocator.isLocationServiceEnabled();
@@ -25,31 +31,30 @@ class LocationService {
   /// Get current device location
   Future<Position?> getCurrentLocation() async {
     try {
-      // Check if location services are enabled
-      final serviceEnabled = await isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('Location services are disabled');
-        return null;
-      }
+      // Check permission first without requesting (faster)
+      LocationPermission permission = await Geolocator.checkPermission();
 
-      // Check permission
-      LocationPermission permission = await checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Location permission denied');
-          return null;
-        }
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permission denied forever');
-        return null;
+      if (permission == LocationPermission.deniedForever) return null;
+
+      // Try last known position first to speed up
+      final lastPosition = await Geolocator.getLastKnownPosition();
+      final now = DateTime.now();
+
+      // If last known position is recent (e.g. < 2 mins), use it
+      if (lastPosition != null &&
+          now.difference(lastPosition.timestamp).inMinutes < 2) {
+        return lastPosition;
       }
 
-      // Get current position
+      // Otherwise get fresh position
       return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10), // Add timeout
       );
     } catch (e) {
       debugPrint('Error getting current location: $e');
@@ -58,12 +63,25 @@ class LocationService {
   }
 
   /// Get all active office locations
-  Future<List<OfficeLocation>> getOfficeLocations() async {
+  Future<List<OfficeLocation>> getOfficeLocations(
+      {bool forceRefresh = false}) async {
     try {
-      return await _supabase.getOfficeLocations();
+      final now = DateTime.now();
+
+      if (!forceRefresh &&
+          _cachedOffices != null &&
+          _lastOfficeFetchTime != null &&
+          now.difference(_lastOfficeFetchTime!) < _cacheDuration) {
+        return _cachedOffices!;
+      }
+
+      final offices = await _supabase.getOfficeLocations();
+      _cachedOffices = offices;
+      _lastOfficeFetchTime = now;
+      return offices;
     } catch (e) {
       debugPrint('Error getting office locations: $e');
-      return [];
+      return _cachedOffices ?? []; // Return cache on error if available
     }
   }
 

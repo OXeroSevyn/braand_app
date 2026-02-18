@@ -14,7 +14,7 @@ import 'services/notification_service.dart';
 import 'services/permissions_service.dart';
 import 'widgets/global_notification_listener.dart';
 import 'services/auto_signout_service.dart';
-import 'widgets/snowfall_overlay.dart';
+import 'widgets/seasonal_overlay.dart';
 import 'screens/reset_password_screen.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -104,7 +104,7 @@ class MyApp extends StatelessWidget {
             title: AppConstants.appName,
             debugShowCheckedModeBanner: false,
             builder: (context, child) => theme.isSnowfallEnabled
-                ? SnowfallOverlay(child: child!)
+                ? SeasonalOverlay(child: child!)
                 : child!,
             theme: _buildTheme(false),
             darkTheme: _buildTheme(true),

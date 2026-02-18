@@ -4,8 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
-import '../widgets/neo_card.dart';
-import '../widgets/neo_button.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -147,222 +145,380 @@ class _AuthScreenState extends State<AuthScreen> {
             child: CustomPaint(
               painter: GridPainter(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.05),
               ),
             ),
           ),
 
-          // Theme Toggle
-          Positioned(
-            top: 40,
-            right: 20,
-            child: Consumer<ThemeProvider>(
-              builder: (context, theme, _) => Row(
-                children: [
-                  IconButton(
-                    onPressed: theme.toggleSnowfall,
-                    icon: Icon(theme.isSnowfallEnabled
-                        ? Icons.ac_unit
-                        : Icons.ac_unit_outlined),
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark ? Colors.black : Colors.white,
-                      foregroundColor: isDark ? Colors.white : Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                            color: isDark ? Colors.white : Colors.black,
-                            width: 2),
+          // Main Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Header with Toggles
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Consumer<ThemeProvider>(
+                        builder: (context, theme, _) => Row(
+                          children: [
+                            // Seasonal Toggle
+                            IconButton(
+                              onPressed: theme.toggleSnowfall,
+                              tooltip: 'Toggle Seasonal Effects',
+                              icon: Icon(
+                                theme.isSnowfallEnabled
+                                    ? _getSeasonIcon()
+                                    : _getSeasonIconOutline(),
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              style: IconButton.styleFrom(
+                                backgroundColor: isDark
+                                    ? Colors.white.withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.05),
+                                padding: const EdgeInsets.all(12),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Theme Toggle
+                            IconButton(
+                              onPressed: theme.toggleTheme,
+                              tooltip: 'Toggle Theme',
+                              icon: Icon(
+                                theme.isDarkMode
+                                    ? Icons.light_mode
+                                    : Icons.dark_mode,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              style: IconButton.styleFrom(
+                                backgroundColor: isDark
+                                    ? Colors.white.withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.05),
+                                padding: const EdgeInsets.all(12),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: theme.toggleTheme,
-                    icon: Icon(
-                        theme.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark ? Colors.black : Colors.white,
-                      foregroundColor: isDark ? Colors.white : Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                            color: isDark ? Colors.white : Colors.black,
-                            width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+                ),
 
-          // Content
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Branding
-                  _buildBranding(isDark),
-                  const SizedBox(height: 48),
-
-                  // Auth Form
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 450),
-                    child: NeoCard(
-                      padding: const EdgeInsets.all(32),
+                // Center Content
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Tabs (Role Selection) - Only relevant for Sign Up really,
-                          // but kept for consistency or filtering if needed.
-                          if (!_isLogin) ...[
-                            Row(
-                              children: [
-                                _buildTab('Employee', _role == 'Employee'),
-                                _buildTab('Admin', _role == 'Admin'),
-                              ],
-                            ),
-                            const SizedBox(height: 32),
-                          ],
+                          // Branding
+                          _buildBranding(isDark),
+                          const SizedBox(height: 40),
 
-                          Text(
-                            _isLogin ? 'PORTAL LOGIN' : 'NEW ACCOUNT',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            _isLogin
-                                ? 'Enter your credentials.'
-                                : 'Join the workforce.',
-                            style: GoogleFonts.spaceMono(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          if (_error != null)
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 24),
+                          // Auth Form Card
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.red,
-                                border:
-                                    Border.all(color: Colors.black, width: 2),
-                                boxShadow: const [
+                                color: isDark
+                                    ? const Color(0xFF1E1E1E)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
                                   BoxShadow(
-                                      color: Colors.black, offset: Offset(4, 4))
-                                ],
-                              ),
-                              child: Text(
-                                _error!,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-
-                          // Inputs
-                          if (!_isLogin) ...[
-                            _buildInputLabel('Full Name'),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _nameController,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.badge_outlined),
-                                hintText: 'John Doe',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildInputLabel('Department'),
-                            const SizedBox(height: 8),
-                            TextField(
-                              controller: _deptController,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.work_outline),
-                                hintText: 'Engineering',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          _buildInputLabel('Email'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _emailController,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.email_outlined),
-                              hintText: 'user@braandins.com',
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildInputLabel('Password'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.lock_outline),
-                              hintText: '••••••••',
-                            ),
-                          ),
-                          if (_isLogin)
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: _showForgotPasswordDialog,
-                                child: Text(
-                                  'Forgot Password?',
-                                  style: GoogleFonts.spaceMono(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                    decoration: TextDecoration.underline,
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 10),
                                   ),
+                                ],
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.1)
+                                      : Colors.grey.withOpacity(0.2),
                                 ),
                               ),
-                            ),
-                          const SizedBox(height: 24),
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Auth Header
+                                  Text(
+                                    _isLogin ? 'Welcome Back' : 'Get Started',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          isDark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _isLogin
+                                        ? 'Enter your credentials to access the portal.'
+                                        : 'Join the workforce operating system.',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 14,
+                                      color: isDark
+                                          ? Colors.white60
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 32),
 
-                          Consumer<AuthProvider>(
-                            builder: (context, auth, _) => NeoButton(
-                              text:
-                                  _isLogin ? 'ENTER SYSTEM' : 'CREATE ACCOUNT',
-                              isLoading: auth.isLoading,
-                              onPressed: _handleSubmit,
-                              icon: Icon(
-                                  _isLogin
-                                      ? Icons.arrow_forward
-                                      : Icons.person_add,
-                                  color: Colors.white),
-                            ),
-                          ),
+                                  // Role Selection Tabs (Sign Up only)
+                                  if (!_isLogin) ...[
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.black
+                                            : Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          _buildTab(
+                                              'Employee', _role == 'Employee'),
+                                          _buildTab('Admin', _role == 'Admin'),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                  ],
 
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: _toggleMode,
-                            child: Text(
-                              _isLogin
-                                  ? 'Need an account? SIGN UP'
-                                  : 'Already have an account? LOGIN',
-                              style: GoogleFonts.spaceMono(
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppColors.brand : Colors.black,
-                                decoration: TextDecoration.underline,
+                                  // Error Message
+                                  if (_error != null)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.only(bottom: 24),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: Colors.red.withOpacity(0.5)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.error_outline,
+                                              color: Colors.red, size: 20),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              _error!,
+                                              style: GoogleFonts.spaceMono(
+                                                  color: Colors.red,
+                                                  fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  // Inputs
+                                  if (!_isLogin) ...[
+                                    _buildTextField(
+                                      controller: _nameController,
+                                      label: 'Full Name',
+                                      icon: Icons.badge_outlined,
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildTextField(
+                                      controller: _deptController,
+                                      label: 'Department',
+                                      icon: Icons.work_outline,
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+
+                                  _buildTextField(
+                                    controller: _emailController,
+                                    label: 'Email Address',
+                                    icon: Icons.email_outlined,
+                                    isDark: isDark,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  _buildTextField(
+                                    controller: _passwordController,
+                                    label: 'Password',
+                                    icon: Icons.lock_outline,
+                                    isDark: isDark,
+                                    isPassword: true,
+                                  ),
+
+                                  if (_isLogin)
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: _showForgotPasswordDialog,
+                                        child: Text(
+                                          'Forgot Password?',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 12,
+                                            color: AppColors.brand,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 24),
+
+                                  // Actions
+                                  Consumer<AuthProvider>(
+                                    builder: (context, auth, _) => Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: auth.isLoading
+                                              ? null
+                                              : _handleSubmit,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.brand,
+                                            foregroundColor: Colors.black,
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 16),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            elevation: 0,
+                                          ),
+                                          child: auth.isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.black))
+                                              : Text(
+                                                  _isLogin
+                                                      ? 'ENTER SYSTEM'
+                                                      : 'CREATE ACCOUNT',
+                                                  style:
+                                                      GoogleFonts.spaceGrotesk(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        OutlinedButton(
+                                          onPressed: auth.isLoading
+                                              ? null
+                                              : () async {
+                                                  final error = await auth
+                                                      .signInWithGoogle();
+                                                  if (error != null &&
+                                                      mounted) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      SnackBar(
+                                                          content: Text(error),
+                                                          backgroundColor:
+                                                              Colors.red),
+                                                    );
+                                                  }
+                                                },
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 16),
+                                            side: BorderSide(
+                                              color: isDark
+                                                  ? Colors.white
+                                                      .withOpacity(0.2)
+                                                  : Colors.grey
+                                                      .withOpacity(0.3),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            backgroundColor: Colors.transparent,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Image.network(
+                                                'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
+                                                height: 20,
+                                                width: 20,
+                                                errorBuilder: (context, error,
+                                                        stackTrace) =>
+                                                    Icon(Icons.g_mobiledata,
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : Colors.black),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                'Continue with Google',
+                                                style: GoogleFonts.spaceGrotesk(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 24),
+                                  Center(
+                                    child: GestureDetector(
+                                      onTap: _toggleMode,
+                                      child: RichText(
+                                        text: TextSpan(
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 14,
+                                            color: isDark
+                                                ? Colors.white60
+                                                : Colors.black54,
+                                          ),
+                                          children: [
+                                            TextSpan(
+                                              text: _isLogin
+                                                  ? "Don't have an account? "
+                                                  : "Already have an account? ",
+                                            ),
+                                            TextSpan(
+                                              text: _isLogin
+                                                  ? 'Sign Up'
+                                                  : 'Login',
+                                              style: TextStyle(
+                                                color: AppColors.brand,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
+                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -439,48 +595,119 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildTab(String title, bool isActive) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _handleRoleChange(title),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isActive ? AppColors.brand : Colors.transparent,
-                width: 4,
+  IconData _getSeasonIcon() {
+    final month = DateTime.now().month;
+    if (month == 12 || month == 1 || month == 2) return Icons.ac_unit;
+    if (month >= 3 && month <= 5) return Icons.local_florist;
+    if (month >= 6 && month <= 8) return Icons.wb_sunny;
+    return Icons.eco; // Leaf
+  }
+
+  IconData _getSeasonIconOutline() {
+    // Return outlined versions if available/desired, or just same icon
+    return _getSeasonIcon();
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    bool isPassword = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.spaceMono(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: isPassword,
+          style: GoogleFonts.spaceGrotesk(
+            color: isDark ? Colors.white : Colors.black,
+          ),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon,
+                size: 20, color: isDark ? Colors.white54 : Colors.black45),
+            hintText: isPassword ? '••••••••' : '',
+            hintStyle:
+                TextStyle(color: isDark ? Colors.white24 : Colors.black26),
+            filled: true,
+            fillColor: isDark ? Colors.black.withOpacity(0.3) : Colors.grey[50],
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark ? Colors.white10 : Colors.grey[200]!,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: AppColors.brand,
+                width: 1.5,
               ),
             ),
           ),
-          child: Text(
-            title.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: GoogleFonts.spaceMono(
-              fontWeight: FontWeight.bold,
-              color: isActive
-                  ? AppColors.brand
-                  : (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey
-                      : Colors.black54),
-            ),
-          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildInputLabel(String label) {
-    return Text(
-      label.toUpperCase(),
-      style: GoogleFonts.spaceMono(
-        fontSize: 10,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.5,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.brand
-            : Colors.black,
+  Widget _buildTab(String title, bool isActive) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _handleRoleChange(title),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive
+                ? (Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow:
+                isActive && Theme.of(context).brightness == Brightness.light
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : [],
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.spaceGrotesk(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: isActive
+                  ? (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black)
+                  : (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey
+                      : Colors.grey[600]),
+            ),
+          ),
+        ),
       ),
     );
   }

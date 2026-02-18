@@ -337,6 +337,11 @@ class _NotificationSettingsScreenState
                     color: AppColors.brand,
                     textColor: Colors.black,
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // Banner Announcements Link
+                  _buildBannerAnnouncementsSection(isDark),
                 ],
               ),
             ),
@@ -466,6 +471,30 @@ class _NotificationSettingsScreenState
     );
   }
 
+  // --- Banner Announcement UI ---
+
+  Widget _buildBannerAnnouncementsSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        NeoButton(
+          text: 'MANAGE BANNER ANNOUNCEMENTS',
+          onPressed: () => _showBannerManagementDialog(isDark),
+          color: Colors.blueAccent, // Distinct color
+          textColor: Colors.white,
+          icon: const Icon(Icons.campaign, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showBannerManagementDialog(bool isDark) async {
+    showDialog(
+      context: context,
+      builder: (context) => const BannerManagementDialog(),
+    );
+  }
+
   Widget _buildDayChip(NotificationSetting setting, String day, bool isDark) {
     final isSelected = setting.daysOfWeek.contains(day);
 
@@ -540,5 +569,163 @@ class _NotificationSettingsScreenState
       default:
         return Icons.notifications;
     }
+  }
+}
+
+class BannerManagementDialog extends StatefulWidget {
+  const BannerManagementDialog({super.key});
+
+  @override
+  State<BannerManagementDialog> createState() => _BannerManagementDialogState();
+}
+
+class _BannerManagementDialogState extends State<BannerManagementDialog> {
+  final SupabaseService _supabaseService = SupabaseService();
+  final TextEditingController _messageController = TextEditingController();
+  List<Map<String, dynamic>> _announcements = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnnouncements();
+  }
+
+  Future<void> _loadAnnouncements() async {
+    setState(() => _isLoading = true);
+    final data = await _supabaseService.getBannerAnnouncements();
+    if (mounted) {
+      setState(() {
+        _announcements = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addAnnouncement() async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    await _supabaseService.createBannerAnnouncement(message: message);
+    _messageController.clear();
+    await _loadAnnouncements();
+  }
+
+  Future<void> _deleteAnnouncement(String id) async {
+    setState(() => _isLoading = true);
+    await _supabaseService.deleteBannerAnnouncement(id);
+    await _loadAnnouncements();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'BANNER ANNOUNCEMENTS',
+                    style: GoogleFonts.spaceMono(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Add New Input
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      style: GoogleFonts.spaceMono(fontSize: 12),
+                      decoration: InputDecoration(
+                        hintText: 'New announcement...',
+                        hintStyle: GoogleFonts.spaceMono(fontSize: 12),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.add, color: AppColors.brand),
+                    onPressed: _addAnnouncement,
+                    tooltip: 'Add',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // List
+              SizedBox(
+                height: 300,
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _announcements.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No active announcements',
+                              style: GoogleFonts.spaceMono(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: _announcements.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final item = _announcements[index];
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: Colors.grey.withOpacity(0.3)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item['message'] ?? '',
+                                        style:
+                                            GoogleFonts.spaceMono(fontSize: 12),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          size: 20, color: Colors.red),
+                                      onPressed: () =>
+                                          _deleteAnnouncement(item['id']),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
+        ));
   }
 }

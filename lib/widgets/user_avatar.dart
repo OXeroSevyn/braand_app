@@ -51,6 +51,7 @@ class UserAvatar extends StatelessWidget {
                 fit: BoxFit.cover,
                 width: size,
                 height: size,
+                cacheWidth: (size * 2).toInt(), // Optimization for memory
                 errorBuilder: (context, error, stackTrace) {
                   // If image fails to load, show letter fallback
                   return _buildLetterFallback(firstLetter);

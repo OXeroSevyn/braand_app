@@ -4,6 +4,11 @@ import 'supabase_service.dart';
 class OfficeHoursService {
   final SupabaseService _supabase = SupabaseService();
 
+  // Cache
+  Map<String, dynamic>? _cachedSettings;
+  DateTime? _lastFetchTime;
+  static const Duration _cacheDuration = Duration(minutes: 30);
+
   /// Check if current time is within office hours
   Future<OfficeHoursStatus> checkOfficeHours() async {
     final now = DateTime.now();
@@ -17,7 +22,20 @@ class OfficeHoursService {
       );
     }
 
-    final settings = await _supabase.getOfficeHours();
+    // Use Cache if fresh
+    Map<String, dynamic>? settings;
+    if (_cachedSettings != null &&
+        _lastFetchTime != null &&
+        now.difference(_lastFetchTime!) < _cacheDuration) {
+      settings = _cachedSettings;
+    } else {
+      settings = await _supabase.getOfficeHours();
+      if (settings != null) {
+        _cachedSettings = settings;
+        _lastFetchTime = now;
+      }
+    }
+
     if (settings == null) {
       return OfficeHoursStatus(isWithinHours: true, message: null);
     }

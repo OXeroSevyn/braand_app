@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'package:google_sign_in/google_sign_in.dart';
+
 import '../models/user.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
@@ -229,6 +231,64 @@ class AuthProvider with ChangeNotifier {
       return null;
     } catch (e) {
       return 'Failed to send password reset email: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> signInWithGoogle() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      debugPrint('🌐 Starting Google Sign-In...');
+
+      // 1. Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        serverClientId:
+            '222870540094-hmvpa91ns7ufk8ku0intt6ettbbajtn3.apps.googleusercontent.com', // Web Client ID
+      );
+
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        debugPrint('❌ Google Sign-In cancelled by user');
+        _isLoading = false;
+        notifyListeners();
+        return 'Sign in cancelled';
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final accessToken = googleAuth.accessToken;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw 'No ID Token found';
+      }
+
+      debugPrint('✅ Google Auth successful, exchanging with Supabase...');
+
+      // 2. Supabase Sign-In
+      final response = await _supabase.auth.signInWithIdToken(
+        provider: supabase.OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      debugPrint('✅ Supabase Exchange successful: ${response.user?.email}');
+
+      if (response.user != null) {
+        // 3. Force load user profile to ensure state is updated
+        await _loadUserFromSession(response.user!);
+      }
+
+      return null;
+    } on supabase.AuthException catch (e) {
+      debugPrint('❌ Auth Error: ${e.message}');
+      return e.message;
+    } catch (e) {
+      debugPrint('❌ Unexpected Error: $e');
+      return 'An unexpected error occurred: $e';
     } finally {
       _isLoading = false;
       notifyListeners();

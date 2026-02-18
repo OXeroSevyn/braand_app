@@ -7,6 +7,7 @@ import '../providers/theme_provider.dart';
 import 'web_admin_view.dart';
 import 'web_employee_view.dart';
 import '../widgets/neo_card.dart';
+import '../widgets/glass_container.dart';
 
 class WebDashboardScreen extends StatelessWidget {
   const WebDashboardScreen({super.key});
@@ -14,18 +15,67 @@ class WebDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthProvider>(context).user!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Force dark mode for premium feel
+    const isDark = true;
 
     return Scaffold(
+      backgroundColor: AppColors.darkBackground,
       body: Stack(
         children: [
-          // Grid Background
+          // Background Gradient (Deep & Subtle)
           Positioned.fill(
-            child: CustomPaint(
-              painter: GridPainter(
-                color: isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.black.withOpacity(0.05),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0F0F1A), // Deep Blue/Black
+                    Color(0xFF050508), // Almost Black
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Accent Glows (Top Left)
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 500,
+              height: 500,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.brand.withOpacity(0.15),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.brand.withOpacity(0.15),
+                    blurRadius: 150,
+                    spreadRadius: 50,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Accent Glows (Bottom Right)
+          Positioned(
+            bottom: -100,
+            right: -100,
+            child: Container(
+              width: 500,
+              height: 500,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.brandSecondary.withOpacity(0.1),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.brandSecondary.withOpacity(0.1),
+                    blurRadius: 150,
+                    spreadRadius: 50,
+                  ),
+                ],
               ),
             ),
           ),
@@ -33,53 +83,65 @@ class WebDashboardScreen extends StatelessWidget {
           // Content
           Row(
             children: [
-              // Side Navigation
+              // Side Navigation (Glassmorphic)
               Container(
                 width: 280,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(24),
+                margin: const EdgeInsets.all(16), // Floating look
                 decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      width: 2,
-                    ),
+                  color: AppColors.darkSurface.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.05),
+                    width: 1,
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Branding
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black,
+                    Center(
+                      child: RichText(
+                        text: TextSpan(
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -1,
+                          ),
+                          children: const [
+                            TextSpan(text: 'BRAANDINS'),
+                            TextSpan(
+                                text: '.',
+                                style:
+                                    TextStyle(color: AppColors.brandSecondary)),
+                          ],
                         ),
-                        children: const [
-                          TextSpan(text: 'BRAANDINS'),
-                          TextSpan(
-                              text: '.',
-                              style: TextStyle(color: AppColors.brand)),
-                        ],
                       ),
                     ),
                     const SizedBox(height: 32),
 
-                    // User Profile
+                    // User Profile (Glass Card)
                     NeoCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 32,
-                            backgroundColor: AppColors.brand,
-                            child: Text(
-                              user.name[0],
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                          Container(
+                            padding: const EdgeInsets.all(3), // Border width
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppColors.brandGradient,
+                            ),
+                            child: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: AppColors.darkSurface,
+                              child: Text(
+                                user.name[0],
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -89,6 +151,7 @@ class WebDashboardScreen extends StatelessWidget {
                             style: GoogleFonts.spaceGrotesk(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
+                              color: Colors.white,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -96,7 +159,7 @@ class WebDashboardScreen extends StatelessWidget {
                             '${user.role} • ${user.department}',
                             style: GoogleFonts.spaceMono(
                               fontSize: 10,
-                              color: Colors.grey,
+                              color: Colors.white54,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -104,14 +167,23 @@ class WebDashboardScreen extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
                     // Navigation Items
                     _buildNavItem(
-                      icon: Icons.dashboard,
+                      icon: Icons.dashboard_outlined,
                       label: 'DASHBOARD',
                       isActive: true,
-                      isDark: isDark,
+                    ),
+                    _buildNavItem(
+                      icon: Icons.people_outline,
+                      label: 'TEAM',
+                      isActive: false,
+                    ),
+                    _buildNavItem(
+                      icon: Icons.analytics_outlined,
+                      label: 'REPORTS',
+                      isActive: false,
                     ),
 
                     const Spacer(),
@@ -124,7 +196,6 @@ class WebDashboardScreen extends StatelessWidget {
                             : Icons.dark_mode,
                         label: theme.isDarkMode ? 'LIGHT MODE' : 'DARK MODE',
                         isActive: false,
-                        isDark: isDark,
                         onTap: theme.toggleTheme,
                       ),
                     ),
@@ -136,7 +207,7 @@ class WebDashboardScreen extends StatelessWidget {
                       icon: Icons.logout,
                       label: 'LOGOUT',
                       isActive: false,
-                      isDark: isDark,
+                      isLogout: true,
                       onTap: () =>
                           Provider.of<AuthProvider>(context, listen: false)
                               .logout(),
@@ -147,9 +218,16 @@ class WebDashboardScreen extends StatelessWidget {
 
               // Main Content Area
               Expanded(
-                child: user.role == 'Admin'
-                    ? const WebAdminView()
-                    : WebEmployeeView(user: user),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.only(top: 16, bottom: 16, right: 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: user.role == 'Admin'
+                        ? const WebAdminView()
+                        : WebEmployeeView(user: user),
+                  ),
+                ),
               ),
             ],
           ),
@@ -162,81 +240,62 @@ class WebDashboardScreen extends StatelessWidget {
     required IconData icon,
     required String label,
     required bool isActive,
-    required bool isDark,
+    bool isLogout = false,
     VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.brand
-              : (isDark ? Colors.transparent : Colors.transparent),
-          border: Border.all(
-            color: isActive
-                ? (isDark ? Colors.white : Colors.black)
-                : Colors.transparent,
-            width: 2,
-          ),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: isDark ? Colors.black : Colors.black,
-                    offset: const Offset(4, 4),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: isActive ? AppColors.brandGradient : null,
+              color: isActive ? null : Colors.transparent,
+              border: isActive
+                  ? null
+                  : Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: isActive
+                      ? Colors.white
+                      : (isLogout ? Colors.redAccent : Colors.white60),
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: GoogleFonts.spaceMono(
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive
+                        ? Colors.white
+                        : (isLogout ? Colors.redAccent : Colors.white60),
+                    fontSize: 12,
                   ),
+                ),
+                if (isActive) ...[
+                  const Spacer(),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                  )
                 ]
-              : [],
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isActive
-                  ? Colors.white
-                  : (isDark ? Colors.white70 : Colors.black54),
-              size: 20,
+              ],
             ),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: GoogleFonts.spaceMono(
-                fontWeight: FontWeight.bold,
-                color: isActive
-                    ? Colors.white
-                    : (isDark ? Colors.white70 : Colors.black54),
-                fontSize: 12,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
-}
-
-class GridPainter extends CustomPainter {
-  final Color color;
-  GridPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-
-    const spacing = 40.0;
-
-    for (double i = 0; i < size.width; i += spacing) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-
-    for (double i = 0; i < size.height; i += spacing) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

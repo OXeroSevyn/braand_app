@@ -11,6 +11,8 @@ class Task {
   final TimeOfDay? startTime;
   final TimeOfDay? endTime;
   final TimeOfDay? actualEndTime;
+  final String adminAssessment; // 'pending', 'accepted', 'rejected'
+  final String priority; // 'normal', 'urgent'
 
   Task({
     required this.id,
@@ -23,6 +25,8 @@ class Task {
     this.startTime,
     this.endTime,
     this.actualEndTime,
+    this.adminAssessment = 'pending',
+    this.priority = 'normal',
   });
 
   /// Calculate duration with seconds precision
@@ -89,6 +93,8 @@ class Task {
       startTime: parseTime(json['start_time'] as String?),
       endTime: parseTime(json['end_time'] as String?),
       actualEndTime: parseTime(json['actual_end_time'] as String?),
+      adminAssessment: json['admin_assessment'] as String? ?? 'pending',
+      priority: json['priority'] as String? ?? 'normal',
     );
   }
 
@@ -110,6 +116,8 @@ class Task {
       'start_time': formatTime(startTime),
       'end_time': formatTime(endTime),
       'actual_end_time': formatTime(actualEndTime),
+      'admin_assessment': adminAssessment,
+      'priority': priority,
     };
   }
 }

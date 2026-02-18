@@ -196,6 +196,49 @@ class NotificationService {
     _firebaseMessaging.subscribeToTopic('user_$userId');
     _firebaseMessaging.subscribeToTopic('all_users');
   }
+
+  void listenForTableNotifications(String userId) {
+    Supabase.instance.client
+        .channel('public:notifications:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            showLocalNotification(
+              title: newRecord['title'] ?? 'New Notification',
+              body: newRecord['body'] ?? '',
+              payload: newRecord['data']?.toString(),
+            );
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> showLocalNotification(
+      {required String title, required String body, String? payload}) async {
+    const androidDetails = AndroidNotificationDetails(
+      'braand_channel',
+      'Task Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails);
+
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      title,
+      body,
+      details,
+      payload: payload,
+    );
+  }
 }
 
 // Top-level function for background handling

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import '../constants.dart';
 import '../models/user.dart';
 import '../models/attendance_record.dart';
+import '../models/attendance_stats.dart';
 import '../services/supabase_service.dart';
+import '../services/attendance_verification_service.dart';
+import '../services/office_hours_service.dart';
 import '../utils/attendance_utils.dart';
-import '../widgets/neo_card.dart';
+import '../widgets/attendance/attendance_header.dart';
+import '../widgets/attendance/bento_stats_grid.dart';
+import '../widgets/attendance/modern_calendar.dart';
+import '../widgets/attendance/gradient_timeline.dart';
 
 class AttendanceScreen extends StatefulWidget {
   final User user;
@@ -24,12 +31,22 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final SupabaseService _supabaseService = SupabaseService();
+  final AttendanceVerificationService _verificationService =
+      AttendanceVerificationService();
+  final OfficeHoursService _officeHoursService = OfficeHoursService();
+
+  AttendanceStats? _stats;
   List<AttendanceRecord> _allRecords = [];
   List<User> _allEmployees = [];
   User? _selectedEmployee;
   DateTime _selectedDate = DateTime.now();
   DateTime _currentMonth = DateTime.now();
   bool _isLoading = true;
+  bool _isActionLoading = false;
+
+  // Status State
+  bool _isClockedIn = false;
+  DateTime? _clockInTime;
 
   @override
   void initState() {
@@ -41,55 +58,40 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Load employee list if admin view
       if (widget.isAdminView) {
-        try {
-          final employees = await _supabaseService.getAllEmployees();
-          if (mounted) {
-            setState(() {
-              _allEmployees = employees;
-              // Default to first employee if available, or reset if list is empty
-              if (employees.isNotEmpty) {
-                // Only set if null or if current selection is not in the new list
-                if (_selectedEmployee == null ||
-                    !employees.any((e) => e.id == _selectedEmployee!.id)) {
-                  _selectedEmployee = employees.first;
-                }
-              } else {
-                _selectedEmployee = null;
-              }
-            });
-          }
-        } catch (e) {
-          debugPrint('Error loading employees: $e');
-          // Continue even if employee loading fails
-          if (mounted) {
-            setState(() {
-              _allEmployees = [];
-              _selectedEmployee = null;
-            });
-          }
-        }
+        // Logic for Admin View (fetching employees)
+        await _loadEmployeesIfNeeded();
       }
 
-      // Determine which user's records to load
       final targetUserId = widget.isAdminView && _selectedEmployee != null
           ? _selectedEmployee!.id
           : widget.user.id;
 
-      // Load last 6 months of data
       final now = DateTime.now();
+      // Fetch 6 months back for scrolling, but focus on current month
       final sixMonthsAgo = DateTime(now.year, now.month - 6, 1);
+      final nextMonth = DateTime(
+          now.year, now.month + 1, 1); // Fetch slightly ahead just in case
 
       final records = await _supabaseService.getUserRecordsForDateRange(
         targetUserId,
         sixMonthsAgo,
-        now,
+        nextMonth,
       );
+
+      final stats = await _supabaseService.getAttendanceStats(
+        targetUserId,
+        _currentMonth.year,
+        _currentMonth.month,
+      );
+
+      // Determine Status from latest record
+      _determineStatus(records);
 
       if (mounted) {
         setState(() {
           _allRecords = records;
+          _stats = stats;
           _isLoading = false;
         });
       }
@@ -101,677 +103,255 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  Future<void> _loadEmployeesIfNeeded() async {
+    if (_allEmployees.isNotEmpty) return;
+    try {
+      final employees = await _supabaseService.getAllEmployees();
+      if (mounted) {
+        setState(() {
+          _allEmployees = employees;
+          if (employees.isNotEmpty && _selectedEmployee == null) {
+            _selectedEmployee = employees.first; // Default to first
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading employees: $e');
+    }
+  }
+
+  void _determineStatus(List<AttendanceRecord> records) {
+    if (records.isEmpty) {
+      _isClockedIn = false;
+      _clockInTime = null;
+      return;
+    }
+
+    // Sort to ensure we have latest first (Supabase usually returns this way but verify)
+    records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final latest = records.first;
+
+    if (latest.type == AttendanceType.CLOCK_IN ||
+        latest.type == AttendanceType.BREAK_END) {
+      final latestTime = DateTime.fromMillisecondsSinceEpoch(latest.timestamp);
+      final now = DateTime.now();
+
+      // Check if the clock-in is from TODAY.
+      // If it's from a previous day, assume they forgot to clock out and mark as OFF DUTY for today.
+      final isToday = latestTime.year == now.year &&
+          latestTime.month == now.month &&
+          latestTime.day == now.day;
+
+      if (isToday) {
+        _isClockedIn = true;
+        _clockInTime = latestTime;
+      } else {
+        _isClockedIn = false;
+        _clockInTime = null;
+      }
+    } else {
+      _isClockedIn = false;
+      _clockInTime = null;
+    }
+  }
+
+  Future<void> _handleClockToggle() async {
+    if (widget.isAdminView) return;
+
+    setState(() => _isActionLoading = true);
+
+    final type =
+        _isClockedIn ? AttendanceType.CLOCK_OUT : AttendanceType.CLOCK_IN;
+
+    try {
+      // 1. Parallel Checks (Office Hours & Office Location Check hidden in verification)
+      // Since verification calls location which triggers DB, we optimistically assume success for UI
+      // if we wanted super speed, but we MUST verify location before allowing logic.
+      // However, we can optimize by just running checks.
+
+      final officeHoursStatus = await _officeHoursService.checkOfficeHours();
+
+      if (!officeHoursStatus.isWithinHours) {
+        if (mounted) {
+          setState(() => _isActionLoading = false);
+          _showErrorDialog(officeHoursStatus.message ?? 'Outside office hours');
+        }
+        return;
+      }
+
+      // 2. Verification (Includes Location Check)
+      final verificationResult = await _verificationService.verifyAttendance(
+        userId: widget.user.id,
+        type: type,
+        requirePhoto: false,
+      );
+
+      if (!verificationResult.success) {
+        if (mounted) {
+          setState(() => _isActionLoading = false);
+          _showErrorDialog(
+              verificationResult.errorMessage ?? 'Verification failed');
+        }
+        return;
+      }
+
+      // 3. Location (Get cached or recent)
+      // verifyAttendance already did the heavy lifting for location check.
+      // We just need a coordinate for the record.
+      Location? location;
+      try {
+        final pos = await Geolocator.getLastKnownPosition();
+        if (pos != null) {
+          location = Location(lat: pos.latitude, lng: pos.longitude);
+        } else {
+          // Fallback if needed, but verifyAttendance implies we found a location
+          final fresh = await Geolocator.getCurrentPosition();
+          location = Location(lat: fresh.latitude, lng: fresh.longitude);
+        }
+      } catch (e) {
+        debugPrint('Location error for record: $e');
+      }
+
+      // 4. Optimistic UI Update
+      // Create record locally and update state immediately
+      final newRecord = AttendanceRecord(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}', // Temp ID
+        userId: widget.user.id,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        type: type,
+        location: location,
+        deviceId: verificationResult.deviceId,
+        biometricVerified: verificationResult.biometricVerified,
+        photoUrl: verificationResult.photoUrl,
+        verificationMethod: verificationResult.verificationMethod,
+      );
+
+      setState(() {
+        _isClockedIn = (type == AttendanceType.CLOCK_IN);
+        if (_isClockedIn) {
+          _clockInTime =
+              DateTime.fromMillisecondsSinceEpoch(newRecord.timestamp);
+        } else {
+          _clockInTime = null;
+        }
+
+        // Add to local list so UI reflects it immediately
+        _allRecords.insert(0, newRecord);
+        _isActionLoading = false; // Stop spinner immediately
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              '${type == AttendanceType.CLOCK_IN ? 'Clocked In' : 'Clocked Out'} Successfully!'),
+          backgroundColor: AppColors.brand,
+          duration: const Duration(milliseconds: 1500),
+        ));
+      }
+
+      // 5. Save & Verify Background (Fire and forget from UI perspective)
+      // We save to DB, then silently reload to confirm and replace temp ID
+      _supabaseService.saveRecord(newRecord).then((_) {
+        // Sync full data in background to ensure consistency
+        _loadAttendanceData();
+      }).catchError((e) {
+        // If save fails, we must revert UI
+        if (mounted) {
+          setState(() {
+            _allRecords.removeWhere((r) => r.id == newRecord.id);
+            // Revert status
+            _determineStatus(_allRecords);
+            _isActionLoading = false;
+          });
+          _showErrorDialog('Failed to save attendance: $e');
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isActionLoading = false);
+        _showErrorDialog('Error: $e');
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Action Failed',
+            style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.bold, color: Colors.red)),
+        content: Text(message, style: GoogleFonts.spaceMono(fontSize: 14)),
+        actions: [
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context), child: Text('OK')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // For admin view, show message if no employees
-    if (widget.isAdminView && _allEmployees.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.people_outline,
-                size: 64,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No Employees Found',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Add employees to view their attendance',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    // Determine current month's total hours for the Timeline header?
+    // Wait, GradientTimeline takes totalHours for the *selected day*.
+    final dailyHours =
+        AttendanceUtils.calculateTotalHours(_allRecords, _selectedDate);
 
     return RefreshIndicator(
       onRefresh: _loadAttendanceData,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 24),
-            _buildHoursSummary(),
-            const SizedBox(height: 24),
-            _buildMonthSelector(),
-            const SizedBox(height: 16),
-            _buildCalendar(),
-            const SizedBox(height: 24),
-            _buildDailyDetails(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.only(left: 16),
-      decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: AppColors.brand, width: 4),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ATTENDANCE',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      widget.isAdminView
-                          ? 'View employee attendance'
-                          : 'Track your work hours',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          // Employee selector for admin view
-          if (widget.isAdminView &&
-              _allEmployees.isNotEmpty &&
-              _selectedEmployee != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : Colors.white,
-                border: Border.all(
-                  color: isDark ? Colors.white : Colors.black,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.white : Colors.black,
-                    offset: const Offset(4, 4),
-                  ),
-                ],
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<User>(
-                  value: _selectedEmployee,
-                  isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  style: GoogleFonts.spaceMono(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                  dropdownColor: isDark ? AppColors.darkSurface : Colors.white,
-                  items: _allEmployees.map((employee) {
-                    return DropdownMenuItem<User>(
-                      value: employee,
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 12,
-                            backgroundColor: AppColors.brand,
-                            child: Text(
-                              employee.name.isNotEmpty ? employee.name[0] : '?',
-                              style: GoogleFonts.spaceMono(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  employee.name,
-                                  style: GoogleFonts.spaceMono(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                Text(
-                                  employee.department,
-                                  style: GoogleFonts.spaceMono(
-                                    fontSize: 10,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (User? newEmployee) {
-                    if (newEmployee != null) {
-                      setState(() {
-                        _selectedEmployee = newEmployee;
-                      });
-                      _loadAttendanceData();
-                    }
-                  },
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHoursSummary() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final todayHours = AttendanceUtils.calculateTotalHours(_allRecords, today);
-    final weekHours = AttendanceUtils.calculateWeeklyHours(_allRecords);
-    final monthHours = AttendanceUtils.calculateMonthlyHours(
-      _allRecords,
-      now.month,
-      now.year,
-    );
-    final allTimeHours = AttendanceUtils.calculateAllTimeHours(_allRecords);
-
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 1.3,
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      children: [
-        _buildHourCard('TODAY', todayHours, Icons.today),
-        _buildHourCard('THIS WEEK', weekHours, Icons.calendar_view_week),
-        _buildHourCard('THIS MONTH', monthHours, Icons.calendar_month),
-        _buildHourCard('ALL TIME', allTimeHours, Icons.all_inclusive),
-      ],
-    );
-  }
-
-  Widget _buildHourCard(String label, double hours, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return NeoCard(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.spaceMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: Colors.grey,
-                ),
-              ),
-              Icon(
-                icon,
-                color: isDark ? Colors.white : Colors.black,
-                size: 20,
-              ),
-            ],
-          ),
-          Text(
-            AttendanceUtils.formatHours(hours),
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMonthSelector() {
-    final months = AttendanceUtils.getLastNMonths(6);
-
-    return SizedBox(
-      height: 60,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: months.length,
-        itemBuilder: (context, index) {
-          final month = months[index];
-          final isSelected = month.year == _currentMonth.year &&
-              month.month == _currentMonth.month;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: _buildMonthChip(month, isSelected),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildMonthChip(DateTime month, bool isSelected) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentMonth = month;
-          _selectedDate = month;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.brand
-              : (isDark ? AppColors.darkSurface : Colors.white),
-          border: Border.all(
-            color: isDark ? Colors.white : Colors.black,
-            width: 2,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: isDark ? Colors.white : Colors.black,
-                    offset: const Offset(4, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              DateFormat('MMM').format(month).toUpperCase(),
-              style: GoogleFonts.spaceMono(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                color: isSelected ? Colors.black : null,
-              ),
-            ),
-            Text(
-              DateFormat('yyyy').format(month),
-              style: GoogleFonts.spaceMono(
-                fontSize: 10,
-                color: isSelected ? Colors.black54 : Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCalendar() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final firstDay = AttendanceUtils.getFirstDayOfMonth(_currentMonth);
-    final lastDay = AttendanceUtils.getLastDayOfMonth(_currentMonth);
-    final daysInMonth = lastDay.day;
-    final firstWeekday = firstDay.weekday % 7; // 0 = Sunday
-
-    return NeoCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Month header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                DateFormat('MMMM yyyy').format(_currentMonth).toUpperCase(),
-                style: GoogleFonts.spaceMono(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              Text(
-                AttendanceUtils.formatHours(AttendanceUtils.calculateMonthlyHours(_allRecords, _currentMonth.month, _currentMonth.year)),
-                style: GoogleFonts.spaceGrotesk(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: AppColors.brand,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Weekday headers
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) {
-              return SizedBox(
-                width: 40,
-                child: Center(
-                  child: Text(
-                    day,
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 8),
-
-          // Calendar grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-            ),
-            itemCount: firstWeekday + daysInMonth,
-            itemBuilder: (context, index) {
-              if (index < firstWeekday) {
-                return const SizedBox(); // Empty cells before month starts
-              }
-
-              final day = index - firstWeekday + 1;
-              final date =
-                  DateTime(_currentMonth.year, _currentMonth.month, day);
-              final hours =
-                  AttendanceUtils.calculateTotalHours(_allRecords, date);
-              final status = AttendanceUtils.getDayStatus(hours);
-              final isToday = date.year == DateTime.now().year &&
-                  date.month == DateTime.now().month &&
-                  date.day == DateTime.now().day;
-              final isSelected = date.year == _selectedDate.year &&
-                  date.month == _selectedDate.month &&
-                  date.day == _selectedDate.day;
-              final isFuture = date.isAfter(DateTime.now());
-
-              return _buildCalendarDay(
-                day,
-                date,
-                status,
-                isToday,
-                isSelected,
-                isFuture,
-                isDark,
-              );
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          // Legend
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _buildLegendItem(
-                  'Full Day (8+ hrs)', _getStatusColor('full', false)),
-              _buildLegendItem(
-                  'Partial (4-8 hrs)', _getStatusColor('partial', false)),
-              _buildLegendItem(
-                  'Minimal (<4 hrs)', _getStatusColor('minimal', false)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalendarDay(
-    int day,
-    DateTime date,
-    String status,
-    bool isToday,
-    bool isSelected,
-    bool isFuture,
-    bool isDark,
-  ) {
-    final color = isFuture ? Colors.grey[300] : _getStatusColor(status, isDark);
-
-    return GestureDetector(
-      onTap: isFuture
-          ? null
-          : () {
-              setState(() {
-                _selectedDate = date;
-              });
-            },
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          border: Border.all(
-            color: isSelected
-                ? (isDark ? Colors.white : Colors.black)
-                : (isToday ? AppColors.brand : Colors.transparent),
-            width: isSelected ? 3 : (isToday ? 2 : 0),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            '$day',
-            style: GoogleFonts.spaceMono(
-              fontWeight:
-                  isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 12,
-              color: status == 'full' || status == 'partial'
-                  ? Colors.black
-                  : (isFuture
-                      ? Colors.grey
-                      : (isDark ? Colors.white : Colors.black)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getStatusColor(String status, bool isDark) {
-    switch (status) {
-      case 'full':
-        return AppColors.brand;
-      case 'partial':
-        return Colors.amber;
-      case 'minimal':
-        return Colors.red[300]!;
-      case 'none':
-      default:
-        return isDark ? AppColors.darkSurface : Colors.grey[100]!;
-    }
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            border: Border.all(color: Colors.black, width: 1),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.spaceMono(fontSize: 10),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDailyDetails() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dayRecords =
-        AttendanceUtils.getAttendanceForDate(_allRecords, _selectedDate);
-    final totalHours =
-        AttendanceUtils.calculateTotalHours(_allRecords, _selectedDate);
-
-    return NeoCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      DateFormat('EEEE, MMM d, yyyy')
-                          .format(_selectedDate)
-                          .toUpperCase(),
-                      style: GoogleFonts.spaceMono(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Total: ${AttendanceUtils.formatHours(totalHours, detailed: true)}',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.brand,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, thickness: 2),
-          if (dayRecords.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                '> No attendance records for this day.',
-                style: GoogleFonts.spaceMono(color: Colors.grey),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: dayRecords.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final record = dayRecords[index];
-                return _buildRecordTile(record, isDark);
+            AttendanceHeader(
+              user: widget.user,
+              isAdminView: widget.isAdminView,
+              isClockedIn: _isClockedIn,
+              clockInTime: _clockInTime,
+              onClockToggle: _handleClockToggle,
+              isLoading: _isActionLoading,
+              selectedEmployee: _selectedEmployee,
+              allEmployees: _allEmployees,
+              onEmployeeSelected: (user) {
+                setState(() => _selectedEmployee = user);
+                _loadAttendanceData();
               },
             ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(height: 32),
 
-  Widget _buildRecordTile(AttendanceRecord record, bool isDark) {
-    IconData icon;
-    Color iconColor;
-    String label;
+            BentoStatsGrid(stats: _stats),
+            const SizedBox(height: 32),
 
-    switch (record.type) {
-      case AttendanceType.CLOCK_IN:
-        icon = Icons.play_arrow;
-        iconColor = AppColors.brand;
-        label = 'CLOCK IN';
-        break;
-      case AttendanceType.CLOCK_OUT:
-        icon = Icons.stop;
-        iconColor = Colors.red;
-        label = 'CLOCK OUT';
-        break;
-      case AttendanceType.BREAK_START:
-        icon = Icons.coffee;
-        iconColor = Colors.amber;
-        label = 'BREAK START';
-        break;
-      case AttendanceType.BREAK_END:
-        icon = Icons.restaurant;
-        iconColor = Colors.blue;
-        label = 'BREAK END';
-        break;
-    }
+            ModernCalendar(
+              currentMonth: _currentMonth,
+              selectedDate: _selectedDate,
+              records: _allRecords,
+              onDateSelected: (date) => setState(() => _selectedDate = date),
+              onMonthChanged: (date) {
+                setState(() {
+                  _currentMonth = date;
+                  _selectedDate =
+                      date; // Create logic to select first day or keep day
+                });
+                _loadAttendanceData();
+              },
+            ),
+            const SizedBox(height: 40),
 
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.2),
-          border: Border.all(color: iconColor, width: 2),
+            GradientTimeline(
+              records: _allRecords,
+              selectedDate: _selectedDate,
+              totalHours: dailyHours,
+            ),
+            const SizedBox(height: 100), // Bottom padding
+          ],
         ),
-        child: Icon(icon, color: iconColor, size: 20),
-      ),
-      title: Text(
-        label,
-        style: GoogleFonts.spaceMono(
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            DateFormat('hh:mm a').format(
-              DateTime.fromMillisecondsSinceEpoch(record.timestamp),
-            ),
-            style: GoogleFonts.spaceMono(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (record.location != null)
-            const Icon(
-              Icons.location_on,
-              size: 12,
-              color: Colors.grey,
-            ),
-        ],
       ),
     );
   }

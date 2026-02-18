@@ -10,13 +10,17 @@ import '../models/task.dart';
 import '../models/device_binding.dart';
 import '../models/office_location.dart';
 import '../models/notice.dart';
-import '../models/leave_request.dart';
+import 'package:braand_app/models/leave_balance.dart';
+import 'package:braand_app/models/leave_request.dart';
+import 'package:braand_app/models/attendance_stats.dart';
 import '../models/app_version.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  User? get currentUser => _supabase.auth.currentUser;
 
   // --- Profiles ---
 
@@ -706,6 +710,8 @@ class SupabaseService {
       'start_time': formatTime(task.startTime),
       'end_time': formatTime(task.endTime),
       'actual_end_time': formatTime(task.actualEndTime),
+      'admin_assessment': task.adminAssessment,
+      'priority': task.priority,
     });
   }
 
@@ -742,7 +748,22 @@ class SupabaseService {
     }).eq('id', taskId);
   }
 
+  /// Update the Admin Assessment of a task
+  Future<void> updateTaskAssessment(String taskId, String assessment) async {
+    await _supabase.from('tasks').update({
+      'admin_assessment': assessment,
+    }).eq('id', taskId);
+  }
+
+  /// Update the Priority of a task
+  Future<void> updateTaskPriority(String taskId, String priority) async {
+    await _supabase.from('tasks').update({
+      'priority': priority,
+    }).eq('id', taskId);
+  }
+
   /// Delete a task
+
   Future<void> deleteTask(String taskId) async {
     await _supabase.from('tasks').delete().eq('id', taskId);
   }
@@ -861,6 +882,42 @@ class SupabaseService {
     } catch (e) {
       debugPrint('❌ Error auto signing out user: $e');
       logs.add('   - ❌ ERROR: $e');
+    }
+    return logs;
+  }
+
+  /// ADMIN ONLY: Scan ALL active users and auto sign-out anyone still clocked in
+  Future<List<String>> autoSignOutAllUsers() async {
+    List<String> logs = [];
+    logs.add('👮 ADMIN ACTION: Starting Global Auto Sign-Out Scan...');
+
+    try {
+      // 1. Fetch ALL active users
+      final allUsers = await getAllActiveUsers();
+      if (allUsers.isEmpty) {
+        logs.add('   - No active users found in database.');
+        return logs;
+      }
+      logs.add('   - Found ${allUsers.length} active users to scan.');
+
+      // 2. Iterate and check each user
+      int signedOutCount = 0;
+      for (final user in allUsers) {
+        // Skip calling the robust "autoSignOutUser" to update logs per user
+        final userLogs = await autoSignOutUser(user.id);
+
+        // If the logs indicate a success, increment count
+        if (userLogs.any((l) => l.contains('SUCCESS'))) {
+          signedOutCount++;
+          logs.add('   - ✅ Clocked out: ${user.name}');
+        }
+      }
+
+      logs.add(
+          '🏁 Global Scan Complete. Auto-signed out $signedOutCount users.');
+    } catch (e) {
+      debugPrint('❌ Error in global auto sign-out: $e');
+      logs.add('❌ CRITICAL ERROR in global scan: $e');
     }
     return logs;
   }
@@ -1090,6 +1147,53 @@ class SupabaseService {
       'reason': reason,
       'status': 'Pending',
     });
+
+    // Update pending leaves
+    try {
+      final days = endDate.difference(startDate).inDays + 1;
+      final year = startDate.year;
+
+      // Fetch balance first
+      final balance = await getLeaveBalance(userId, year);
+      await _supabase.from('leave_balances').update({
+        'pending_leaves': balance.pendingLeaves + days,
+      }).eq('id', balance.id);
+    } catch (e) {
+      debugPrint('⚠️ Error updating pending leaves: $e');
+    }
+  }
+
+  /// Get leave balance for a user and year
+  Future<LeaveBalance> getLeaveBalance(String userId, int year) async {
+    try {
+      final response = await _supabase
+          .from('leave_balances')
+          .select()
+          .eq('user_id', userId)
+          .eq('year', year)
+          .maybeSingle();
+
+      if (response == null) {
+        // Initialize default
+        final newBalance = await _supabase
+            .from('leave_balances')
+            .insert({
+              'user_id': userId,
+              'year': year,
+              'total_leaves': 12,
+              'used_leaves': 0,
+              'pending_leaves': 0,
+            })
+            .select()
+            .single();
+        return LeaveBalance.fromJson(newBalance);
+      }
+      return LeaveBalance.fromJson(response);
+    } catch (e) {
+      debugPrint('❌ Error getting leave balance: $e');
+      // Return dummy if error to avoid crash
+      return LeaveBalance(id: '', userId: userId, year: year);
+    }
   }
 
   /// Get leave requests for the current user
@@ -1125,10 +1229,44 @@ class SupabaseService {
     String? adminComment,
   }) async {
     try {
+      // Fetch request first to get details
+      final requestData = await _supabase
+          .from('leave_requests')
+          .select()
+          .eq('id', requestId)
+          .single();
+      final LeaveRequest request = LeaveRequest.fromJson(requestData);
+
       await _supabase.from('leave_requests').update({
         'status': status,
         'admin_comment': adminComment,
       }).eq('id', requestId);
+
+      // Update Leave Balance
+      if (status == 'Approved' && request.status != 'Approved') {
+        // Pending -> Approved
+        final days = request.endDate.difference(request.startDate).inDays + 1;
+        final year = request.startDate.year;
+        final balance = await getLeaveBalance(request.userId, year);
+
+        await _supabase.from('leave_balances').update({
+          'used_leaves': balance.usedLeaves + days,
+          'pending_leaves': (balance.pendingLeaves - days) < 0
+              ? 0
+              : (balance.pendingLeaves - days),
+        }).eq('id', balance.id);
+      } else if (status == 'Rejected' && request.status == 'Pending') {
+        // Pending -> Rejected
+        final days = request.endDate.difference(request.startDate).inDays + 1;
+        final year = request.startDate.year;
+        final balance = await getLeaveBalance(request.userId, year);
+
+        await _supabase.from('leave_balances').update({
+          'pending_leaves': (balance.pendingLeaves - days) < 0
+              ? 0
+              : (balance.pendingLeaves - days),
+        }).eq('id', balance.id);
+      }
     } catch (e) {
       debugPrint('❌ Error updating leave status: $e');
       rethrow;
@@ -1237,5 +1375,658 @@ class SupabaseService {
       debugPrint('❌ Error publishing app version: $e');
       rethrow;
     }
+  }
+
+  // --- Monthly Tasks ---
+
+  /// Create a new monthly task (Admin only)
+  Future<void> createMonthlyTask({
+    required String title,
+    String? description,
+    required int month,
+    required int year,
+    String? assignedTo,
+    bool isPrivate = false,
+    String priority = 'Medium',
+  }) async {
+    try {
+      await _supabase.from('monthly_tasks').insert({
+        'title': title,
+        'description': description,
+        'task_type': 'monthly',
+        'month': month,
+        'year': year,
+        'assigned_to': assignedTo,
+        'is_private': isPrivate,
+        'created_by': _supabase.auth.currentUser?.id,
+        'priority': priority,
+      });
+      debugPrint('✅ Monthly task created successfully');
+
+      // Send Notification
+      if (assignedTo != null) {
+        await sendNotification(
+          userId: assignedTo,
+          title: 'New Monthly Task',
+          body: 'You have been assigned: $title',
+          data: {'type': 'task', 'taskId': 'monthly'},
+        );
+      } else {
+        // Notify all employees
+        final employees = await getEmployees();
+        for (var emp in employees) {
+          await sendNotification(
+            userId: emp['id'],
+            title: 'New Monthly Task',
+            body: '$title (All Employees)',
+            data: {'type': 'task', 'taskId': 'monthly'},
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error creating monthly task: $e');
+      rethrow;
+    }
+  }
+
+  /// Create a new date-specific task (Admin only)
+  Future<void> createDailyTask({
+    required String title,
+    String? description,
+    required DateTime specificDate,
+    int? timeLimitValue,
+    String? timeUnit,
+    String? assignedTo,
+    bool isPrivate = false,
+    String priority = 'Medium',
+  }) async {
+    try {
+      // Convert time limit to minutes
+      int? timeLimitMinutes;
+      DateTime? deadlineTime;
+
+      if (timeLimitValue != null && timeUnit != null) {
+        switch (timeUnit) {
+          case 'minutes':
+            timeLimitMinutes = timeLimitValue;
+            break;
+          case 'hours':
+            timeLimitMinutes = timeLimitValue * 60;
+            break;
+          case 'days':
+            timeLimitMinutes = timeLimitValue * 60 * 24;
+            break;
+        }
+        deadlineTime = specificDate.add(Duration(minutes: timeLimitMinutes!));
+      }
+
+      await _supabase.from('monthly_tasks').insert({
+        'title': title,
+        'description': description,
+        'task_type': 'daily',
+        'specific_date': specificDate.toIso8601String().split('T')[0],
+        'time_limit_minutes': timeLimitMinutes,
+        'time_unit': timeUnit,
+        'deadline_time': deadlineTime?.toIso8601String(),
+        'assigned_to': assignedTo,
+        'is_private': isPrivate,
+        'priority': priority,
+        'created_by': _supabase.auth.currentUser?.id,
+      });
+      debugPrint('✅ Daily task created successfully');
+
+      // Send Notification
+      if (assignedTo != null) {
+        await sendNotification(
+          userId: assignedTo,
+          title: 'New Daily Task',
+          body: 'You have been assigned: $title',
+          data: {'type': 'task', 'taskId': 'daily'},
+        );
+      } else {
+        // Notify all employees
+        final employees = await getEmployees();
+        for (var emp in employees) {
+          await sendNotification(
+            userId: emp['id'],
+            title: 'New Daily Task',
+            body: '$title (All Employees)',
+            data: {'type': 'task', 'taskId': 'daily'},
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error creating daily task: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all employees for assignment selector
+  Future<List<Map<String, dynamic>>> getEmployees() async {
+    try {
+      final profiles = await _supabase
+          .from('profiles')
+          .select()
+          .eq('role', 'Employee')
+          .order('name');
+      return List<Map<String, dynamic>>.from(profiles as List);
+    } catch (e) {
+      debugPrint('❌ Error loading employees: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all monthly tasks for a specific month/year
+  Future<List<Map<String, dynamic>>> getMonthlyTasks({
+    required int month,
+    required int year,
+    String? userId,
+  }) async {
+    try {
+      if (userId != null) {
+        // For employees: Join with user_monthly_tasks to get completion status
+        final response = await _supabase
+            .from('monthly_tasks')
+            .select('''
+              *,
+              user_monthly_tasks!left(is_completed, completed_at, started_at)
+            ''')
+            .eq('task_type', 'monthly')
+            .eq('month', month)
+            .eq('year', year)
+            .eq('user_monthly_tasks.user_id', userId)
+            .order('created_at', ascending: true);
+        return List<Map<String, dynamic>>.from(response as List);
+      } else {
+        // For admins: Just get all tasks
+        final response = await _supabase
+            .from('monthly_tasks')
+            .select()
+            .eq('task_type', 'monthly')
+            .eq('month', month)
+            .eq('year', year)
+            .order('created_at', ascending: true);
+        return List<Map<String, dynamic>>.from(response as List);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching monthly tasks: $e');
+      return [];
+    }
+  }
+
+  /// Get all date-specific tasks for a specific date
+  Future<List<Map<String, dynamic>>> getDailyTasks({
+    required DateTime date,
+    String? userId,
+  }) async {
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+
+      if (userId != null) {
+        // For employees: Join with user_monthly_tasks to get completion status
+        final response = await _supabase
+            .from('monthly_tasks')
+            .select('''
+              *,
+              user_monthly_tasks!left(is_completed, completed_at, started_at)
+            ''')
+            .eq('task_type', 'daily')
+            .eq('specific_date', dateStr)
+            .eq('user_monthly_tasks.user_id', userId)
+            .order('created_at', ascending: true);
+        return List<Map<String, dynamic>>.from(response as List);
+      } else {
+        // For admins: Just get all tasks
+        final response = await _supabase
+            .from('monthly_tasks')
+            .select()
+            .eq('task_type', 'daily')
+            .eq('specific_date', dateStr)
+            .order('created_at', ascending: true);
+        return List<Map<String, dynamic>>.from(response as List);
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching daily tasks: $e');
+      return [];
+    }
+  }
+
+  /// Get comprehensive performance metrics for an employee for a specific month
+  Future<Map<String, dynamic>> getEmployeePerformanceMetrics({
+    required String userId,
+    required int month,
+    required int year,
+  }) async {
+    try {
+      final startDate = DateTime(year, month, 1);
+      final endDate = DateTime(year, month + 1, 0); // Last day of month
+
+      // 1. Fetch Tasks (Monthly + Daily)
+      // We need tasks that are NOT private, and are either assigned to this user OR assigned to all (null)
+      final tasksResponse = await _supabase
+          .from('monthly_tasks')
+          .select(
+              '*, user_monthly_tasks!left(is_completed, completed_at, user_id)')
+          .or('assigned_to.eq.$userId,assigned_to.is.null')
+          .eq('is_private', false)
+          .or('and(task_type.eq.monthly,month.eq.$month,year.eq.$year),and(task_type.eq.daily,specific_date.gte.${startDate.toIso8601String().split('T')[0]},specific_date.lte.${endDate.toIso8601String().split('T')[0]})');
+
+      int totalTasks = 0;
+      int completedTasks = 0;
+      final List<Map<String, dynamic>> tasksList =
+          List<Map<String, dynamic>>.from(tasksResponse as List);
+
+      for (var task in tasksList) {
+        totalTasks++;
+        // Check if completed by user
+        final userStatusList = task['user_monthly_tasks'];
+        if (userStatusList != null && userStatusList is List) {
+          for (var status in userStatusList) {
+            if (status['user_id'] == userId && status['is_completed'] == true) {
+              completedTasks++;
+              break;
+            }
+          }
+        }
+      }
+
+      // 2. Fetch Attendance
+      // Get all records for this user in this month
+      // Note: timestamp is int (milliseconds since epoch)
+      final startTs = startDate.millisecondsSinceEpoch;
+      final endTs = endDate.add(const Duration(days: 1)).millisecondsSinceEpoch;
+
+      final attendanceResponse = await _supabase
+          .from('attendance_records')
+          .select()
+          .eq('user_id', userId) // Fixed column name from userId to user_id
+          .gte('timestamp', startTs)
+          .lte('timestamp', endTs)
+          .order('timestamp');
+
+      final List<dynamic> records = attendanceResponse as List;
+      final Set<String> presentDays = {};
+      int lateArrivals = 0;
+
+      // Fetch office hours to calc punctuality
+      final settingsResponse =
+          await _supabase.from('office_hours_settings').select().maybeSingle();
+      final startHour =
+          settingsResponse != null ? settingsResponse['start_hour'] : 9;
+      final startMinute =
+          settingsResponse != null ? settingsResponse['start_minute'] : 30;
+
+      for (var record in records) {
+        if (record['type'] == 'CLOCK_IN') {
+          final time = DateTime.fromMillisecondsSinceEpoch(record['timestamp']);
+          final dateKey = '${time.year}-${time.month}-${time.day}';
+          presentDays.add(dateKey);
+
+          // Check for late arrival
+          // Create threshold time for that specific day
+          final threshold = DateTime(
+            time.year,
+            time.month,
+            time.day,
+            startHour,
+            startMinute +
+                15, // 15 min grace period? Let's stick to strict or small buffer
+          );
+
+          if (time.isAfter(threshold)) {
+            lateArrivals++;
+          }
+        }
+      }
+
+      // 3. Fetch Leaves
+      final leavesResponse = await _supabase
+          .from('leave_requests')
+          .select()
+          .eq('user_id', userId)
+          .eq('status', 'Approved')
+          .or('start_date.lte.${endDate.toIso8601String()},end_date.gte.${startDate.toIso8601String()}');
+      // Overlap logic: Start <= EndOfRange AND End >= StartOfRange
+
+      int leaveDays = 0;
+      for (var leave in leavesResponse) {
+        final start = DateTime.parse(leave['start_date']);
+        final end = DateTime.parse(leave['end_date']);
+
+        // Clamp dates to the selected month
+        final effectiveStart = start.isBefore(startDate) ? startDate : start;
+        final effectiveEnd = end.isAfter(endDate) ? endDate : end;
+
+        if (effectiveEnd.isAfter(effectiveStart) ||
+            effectiveEnd.isAtSameMomentAs(effectiveStart)) {
+          leaveDays += effectiveEnd.difference(effectiveStart).inDays + 1;
+        }
+      }
+
+      return {
+        'tasks': {
+          'total': totalTasks,
+          'completed': completedTasks,
+          'rate': totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0.0,
+        },
+        'attendance': {
+          'present': presentDays.length,
+          'late': lateArrivals,
+          'punctuality': presentDays.isNotEmpty
+              ? ((presentDays.length - lateArrivals) / presentDays.length) * 100
+              : 0.0,
+        },
+        'leaves': {
+          'total': leaveDays,
+        },
+      };
+    } catch (e) {
+      debugPrint('❌ Error fetching performance metrics: $e');
+      return {
+        'tasks': {'total': 0, 'completed': 0, 'rate': 0.0},
+        'attendance': {'present': 0, 'late': 0, 'punctuality': 0.0},
+        'leaves': {'total': 0},
+      };
+    }
+  }
+
+  /// Update monthly task status and sync is_completed
+  Future<void> updateMonthlyTaskStatus({
+    required String taskId,
+    required String userId,
+    required String status,
+  }) async {
+    try {
+      final isCompleted = status == 'Completed';
+      final now = DateTime.now().toIso8601String();
+
+      // Check if record exists
+      final existing = await _supabase
+          .from('user_monthly_tasks')
+          .select()
+          .eq('user_id', userId)
+          .eq('task_id', taskId)
+          .maybeSingle();
+
+      if (existing == null) {
+        // Insert new record
+        await _supabase.from('user_monthly_tasks').insert({
+          'user_id': userId,
+          'task_id': taskId,
+          'status': status,
+          'is_completed': isCompleted,
+          'completed_at': isCompleted ? now : null,
+          'started_at': now,
+        });
+      } else {
+        // Update existing
+        await _supabase
+            .from('user_monthly_tasks')
+            .update({
+              'status': status,
+              'is_completed': isCompleted,
+              'completed_at': isCompleted ? now : null,
+            })
+            .eq('user_id', userId)
+            .eq('task_id', taskId);
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating task status: $e');
+      rethrow;
+    }
+  }
+
+  /// Toggle monthly task completion for a user
+  // Deprecated: Use updateMonthlyTaskStatus instead
+  Future<void> toggleMonthlyTaskCompletion({
+    required String taskId,
+    required String userId,
+    required bool isCompleted,
+  }) async {
+    return updateMonthlyTaskStatus(
+      taskId: taskId,
+      userId: userId,
+      status: isCompleted ? 'Completed' : 'Pending',
+    );
+  }
+
+  /// Mark task as started (for progress tracking)
+  Future<void> startTask({
+    required String taskId,
+    required String userId,
+  }) async {
+    try {
+      final existing = await _supabase
+          .from('user_monthly_tasks')
+          .select()
+          .eq('user_id', userId)
+          .eq('task_id', taskId)
+          .maybeSingle();
+
+      if (existing == null) {
+        // Insert new record with started_at
+        await _supabase.from('user_monthly_tasks').insert({
+          'user_id': userId,
+          'task_id': taskId,
+          'is_completed': false,
+          'started_at': DateTime.now().toIso8601String(),
+        });
+      } else if (existing['started_at'] == null) {
+        // Update existing record to set started_at
+        await _supabase
+            .from('user_monthly_tasks')
+            .update({
+              'started_at': DateTime.now().toIso8601String(),
+            })
+            .eq('user_id', userId)
+            .eq('task_id', taskId);
+      }
+      debugPrint('✅ Task started');
+    } catch (e) {
+      debugPrint('❌ Error starting task: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a monthly task (Admin only)
+  Future<void> deleteMonthlyTask(String taskId) async {
+    try {
+      await _supabase.from('monthly_tasks').delete().eq('id', taskId);
+      debugPrint('✅ Monthly task deleted');
+    } catch (e) {
+      debugPrint('❌ Error deleting monthly task: $e');
+      rethrow;
+    }
+  }
+
+  // --- Notifications ---
+
+  /// Send a notification (Insert into DB)
+  Future<void> sendNotification({
+    required String userId,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      await _supabase.from('notifications').insert({
+        'user_id': userId,
+        'title': title,
+        'body': body,
+        'data': data,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      debugPrint('✅ Notification sent to $userId');
+    } catch (e) {
+      debugPrint('❌ Error sending notification: $e');
+    }
+  }
+
+  // --- Attendance Analytics ---
+  Future<AttendanceStats> getAttendanceStats(
+      String userId, int year, int month) async {
+    try {
+      final startOfMonth = DateTime(year, month, 1);
+      final daysInMonth = DateTime(year, month + 1, 0).day;
+      final endOfMonth = DateTime(year, month, daysInMonth, 23, 59, 59);
+
+      // Fetch records for the month
+      final response = await _supabase
+          .from('attendance_records')
+          .select()
+          .eq('user_id', userId)
+          .gte('timestamp', startOfMonth.millisecondsSinceEpoch)
+          .lte('timestamp', endOfMonth.millisecondsSinceEpoch)
+          .order('timestamp', ascending: true);
+
+      final records = (response as List)
+          .map((json) => AttendanceRecord(
+                id: json['id'],
+                userId: json['user_id'],
+                type: _parseAttendanceType(json['type']),
+                timestamp: json['timestamp'],
+                location: null,
+              ))
+          .toList();
+
+      if (records.isEmpty) {
+        return AttendanceStats.empty();
+      }
+
+      // Fetch Office Hours
+      TimeOfDay officeStart = const TimeOfDay(hour: 9, minute: 30); // Default
+      try {
+        final settings = await _supabase
+            .from('office_hours_settings')
+            .select()
+            .maybeSingle();
+        if (settings != null) {
+          officeStart = TimeOfDay(
+              hour: settings['start_hour'], minute: settings['start_minute']);
+        }
+      } catch (e) {
+        // Fallback
+      }
+
+      int presentDays = 0;
+      int lateDays = 0;
+      double totalHours = 0;
+      final Set<int> uniqueDays = {};
+
+      // Group by day
+      final Map<int, List<AttendanceRecord>> dailyRecords = {};
+      for (var record in records) {
+        final date = DateTime.fromMillisecondsSinceEpoch(record.timestamp);
+        final day = date.day;
+        if (!dailyRecords.containsKey(day)) {
+          dailyRecords[day] = [];
+        }
+        dailyRecords[day]!.add(record);
+      }
+
+      for (var entry in dailyRecords.entries) {
+        final day = entry.key;
+        final dailyList = entry.value;
+
+        // Check Present
+        // Look for CLOCK_IN
+
+        // Find Clock-In
+        AttendanceRecord? firstCheckIn;
+        try {
+          firstCheckIn =
+              dailyList.firstWhere((r) => r.type == AttendanceType.CLOCK_IN);
+        } catch (e) {
+          // No clock in
+        }
+
+        if (firstCheckIn != null) {
+          presentDays++;
+          uniqueDays.add(day);
+
+          // Check Late
+          final checkInTime =
+              DateTime.fromMillisecondsSinceEpoch(firstCheckIn.timestamp);
+          final officeStartTime = DateTime(checkInTime.year, checkInTime.month,
+              checkInTime.day, officeStart.hour, officeStart.minute);
+
+          if (checkInTime
+              .isAfter(officeStartTime.add(const Duration(minutes: 15)))) {
+            lateDays++;
+          }
+
+          // Calculate Hours: Last Record Time - First IN Time
+          final lastRecord = dailyList.last;
+          if (lastRecord.timestamp > firstCheckIn.timestamp) {
+            final durationMillis =
+                lastRecord.timestamp - firstCheckIn.timestamp;
+            totalHours += (durationMillis / (1000 * 60 * 60));
+          }
+        }
+      }
+
+      double avgHours = presentDays > 0 ? totalHours / presentDays : 0;
+
+      return AttendanceStats(
+        presentDays: presentDays,
+        lateDays: lateDays,
+        absentDays: 0, // Placeholder
+        averageHours: avgHours,
+        totalWorkingDays: 0,
+      );
+    } catch (e) {
+      debugPrint('Error getting attendance stats: $e');
+      return AttendanceStats.empty();
+    }
+  }
+  // --- Banner Announcements ---
+
+  Future<List<Map<String, dynamic>>> getBannerAnnouncements() async {
+    try {
+      final response = await _supabase
+          .from('banner_announcements')
+          .select()
+          .eq('is_active', true)
+          .order('created_at', ascending: false);
+
+      // Filter expired announcements locally or in query if possible
+      // (Query filter done in RLS/Policy usually, but explicit check here is good too)
+      final data = response as List<dynamic>;
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    } catch (e) {
+      debugPrint('Error fetching banner announcements: $e');
+      return [];
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> streamBannerAnnouncements() {
+    return _supabase
+        .from('banner_announcements')
+        .stream(primaryKey: ['id']).map((data) {
+      // Filter and sort client-side to be safe against Realtime config issues
+      final List<Map<String, dynamic>> list =
+          List<Map<String, dynamic>>.from(data);
+      list.sort((a, b) =>
+          (b['created_at'] as String).compareTo(a['created_at'] as String));
+      return list.where((e) => e['is_active'] == true).toList();
+    });
+  }
+
+  Future<void> createBannerAnnouncement({
+    required String message,
+    DateTime? expiresAt,
+  }) async {
+    await _supabase.from('banner_announcements').insert({
+      'message': message,
+      'expires_at': expiresAt?.toUtc().toIso8601String(),
+      'created_by': _supabase.auth.currentUser?.id,
+    });
+  }
+
+  Future<void> deleteBannerAnnouncement(String id) async {
+    // Soft delete by setting is_active to false
+    await _supabase
+        .from('banner_announcements')
+        .update({'is_active': false}).eq('id', id);
   }
 }
