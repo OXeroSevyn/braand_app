@@ -4,6 +4,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { AuraBackground } from "@/components/ui/AuraBackground";
 import { useAuth } from "@/context/AuthContext";
 import { taskService, Task } from "@/lib/services";
+import { motion } from "framer-motion";
 import {
     FileText,
     Bell,

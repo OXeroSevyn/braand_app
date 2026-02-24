@@ -24,8 +24,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchProfile = async (id: string) => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (data && !error) {
+            setUser(data as UserProfile);
+        }
+    };
+
+    const signOut = async () => {
+        await supabase.auth.signOut();
+    };
+
     useEffect(() => {
-        // Check active sessions and sets the user
         const initSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             setSupabaseUser(session?.user ?? null);
@@ -37,7 +52,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         initSession();
 
-        // Listen for changes on auth state
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             setSupabaseUser(session?.user ?? null);
             if (session?.user) {
@@ -52,22 +66,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             subscription.unsubscribe();
         };
     }, []);
-
-    const fetchProfile = async (id: string) => {
-        const { data, error } = await supabase
-            .from('profiles') // Assuming the table name is 'profiles' based on Flutter code
-            .select('*')
-            .eq('id', id)
-            .single();
-
-        if (data && !error) {
-            setUser(data as UserProfile);
-        }
-    };
-
-    const signOut = async () => {
-        await supabase.auth.signOut();
-    };
 
     const value = useMemo(() => ({
         user,

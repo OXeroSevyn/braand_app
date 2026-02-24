@@ -64,8 +64,9 @@ export default function AuthPage() {
                 setIsLogin(true);
                 setError("Success! Please check your email and then login.");
             }
-        } catch (err: any) {
-            setError(err.message || "An error occurred");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "An error occurred";
+            setError(message);
         } finally {
             setLoading(false);
         }
