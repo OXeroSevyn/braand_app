@@ -13,20 +13,15 @@ import {
     CheckCircle2,
     Circle
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 
 export default function DashboardPage() {
     const { user, signOut } = useAuth();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (user) {
-            loadData();
-        }
-    }, [user]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
@@ -37,7 +32,13 @@ export default function DashboardPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            loadData();
+        }
+    }, [user, loadData]);
 
     const toggleTask = async (taskId: string, currentStatus: boolean) => {
         try {
@@ -81,8 +82,15 @@ export default function DashboardPage() {
                     >
                         <LogOut className="w-4 h-4" />
                     </button>
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-aura-1 to-aura-2 overflow-hidden border border-white/20">
-                        {user?.avatar && <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />}
+                    <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-aura-1 to-aura-2 overflow-hidden border border-white/20">
+                        {user?.avatar && (
+                            <Image
+                                src={user.avatar}
+                                alt={user.name}
+                                fill
+                                className="object-cover"
+                            />
+                        )}
                     </div>
                 </div>
             </nav>
