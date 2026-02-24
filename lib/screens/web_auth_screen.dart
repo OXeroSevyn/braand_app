@@ -6,7 +6,6 @@ import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/neo_card.dart';
 import '../widgets/neo_button.dart';
-import '../widgets/liquid_background.dart';
 
 class WebAuthScreen extends StatefulWidget {
   const WebAuthScreen({super.key});
@@ -159,212 +158,286 @@ class _WebAuthScreenState extends State<WebAuthScreen> {
     const isDark = true;
 
     return Scaffold(
-      body: LiquidBackground(
-        child: Stack(
-          children: [
-            // Theme Toggle (Optional, maybe hide for pure immersive feel, but keeping for utility)
-            Positioned(
-              top: 40,
-              right: 20,
-              child: Consumer<ThemeProvider>(
-                builder: (context, theme, _) => Row(
-                  children: [
-                    IconButton(
-                      onPressed: theme.toggleSnowfall,
-                      icon: Icon(theme.isSnowfallEnabled
-                          ? Icons.ac_unit
-                          : Icons.ac_unit_outlined),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+      backgroundColor: Colors.black, // Ensure background is black
+      body: Stack(
+        children: [
+          // Static Grid Background
+          Positioned.fill(
+            child: CustomPaint(
+              painter: GridPainter(
+                color: AppColors.brand.withOpacity(0.1),
               ),
             ),
+          ),
 
-            // Content
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Branding
-                    _buildBranding(isDark),
-                    const SizedBox(height: 48),
+          // Content
+          Stack(
+            children: [
+              // Theme Toggle (Optional, maybe hide for pure immersive feel, but keeping for utility)
+              Positioned(
+                top: 40,
+                right: 20,
+                child: Consumer<ThemeProvider>(
+                  builder: (context, theme, _) => Row(
+                    children: [
+                      IconButton(
+                        onPressed: theme.toggleSnowfall,
+                        icon: Icon(theme.isSnowfallEnabled
+                            ? Icons.ac_unit
+                            : Icons.ac_unit_outlined),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.1),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-                    // Auth Form
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 450),
-                      child: NeoCard(
-                        padding: const EdgeInsets.all(40),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (!_isLogin) ...[
-                              Row(
-                                children: [
-                                  _buildTab('Employee', _role == 'Employee'),
-                                  _buildTab('Admin', _role == 'Admin'),
-                                ],
-                              ),
-                              const SizedBox(height: 32),
-                            ],
+              // Content
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Branding
+                      _buildBranding(isDark),
+                      const SizedBox(height: 48),
 
-                            ShaderMask(
-                              shaderCallback: (bounds) =>
-                                  AppColors.brandGradient.createShader(bounds),
-                              child: Text(
-                                _isLogin ? 'WELCOME BACK' : 'JOIN THE FUTURE',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                      // Auth Form
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        child: NeoCard(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (!_isLogin) ...[
+                                Row(
+                                  children: [
+                                    _buildTab('Employee', _role == 'Employee'),
+                                    _buildTab('Admin', _role == 'Admin'),
+                                  ],
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _isLogin
-                                  ? 'Enter your credentials to access the system.'
-                                  : 'Create your digital identity.',
-                              style: GoogleFonts.spaceMono(
-                                fontSize: 12,
-                                color: Colors.white60,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 32),
+                                const SizedBox(height: 32),
+                              ],
 
-                            if (_error != null)
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 24),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: Colors.red.withOpacity(0.5)),
-                                ),
+                              ShaderMask(
+                                shaderCallback: (bounds) => AppColors
+                                    .brandGradient
+                                    .createShader(bounds),
                                 child: Text(
-                                  _error!,
-                                  style: const TextStyle(
-                                    color: Colors.redAccent,
+                                  _isLogin ? 'WELCOME BACK' : 'JOIN THE FUTURE',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 32,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.white,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
-
-                            // Inputs
-                            if (!_isLogin) ...[
-                              _buildInputLabel('Full Name'),
                               const SizedBox(height: 8),
-                              _buildTextField(
-                                controller: _nameController,
-                                icon: Icons.badge_outlined,
-                                hint: 'John Doe',
+                              Text(
+                                _isLogin
+                                    ? 'Enter your credentials to access the system.'
+                                    : 'Create your digital identity.',
+                                style: GoogleFonts.spaceMono(
+                                  fontSize: 12,
+                                  color: Colors.white60,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 16),
-                              _buildInputLabel('Department'),
-                              const SizedBox(height: 8),
-                              _buildTextField(
-                                controller: _deptController,
-                                icon: Icons.work_outline,
-                                hint: 'Engineering',
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                              const SizedBox(height: 32),
 
-                            _buildInputLabel('Email'),
-                            const SizedBox(height: 8),
-                            _buildTextField(
-                              controller: _emailController,
-                              icon: Icons.email_outlined,
-                              hint: 'user@braandins.com',
-                            ),
-                            const SizedBox(height: 16),
-
-                            _buildInputLabel('Password'),
-                            const SizedBox(height: 8),
-                            _buildTextField(
-                              controller: _passwordController,
-                              icon: Icons.lock_outline,
-                              hint: '••••••••',
-                              isPassword: true,
-                            ),
-
-                            if (_isLogin)
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: _showForgotPasswordDialog,
+                              if (_error != null)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: Colors.red.withOpacity(0.5)),
+                                  ),
                                   child: Text(
-                                    'Forgot Password?',
-                                    style: GoogleFonts.spaceMono(
-                                      fontSize: 12,
-                                      color: Colors.white70,
+                                    _error!,
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+
+                              // Inputs
+                              if (!_isLogin) ...[
+                                _buildInputLabel('Full Name'),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: _nameController,
+                                  icon: Icons.badge_outlined,
+                                  hint: 'John Doe',
+                                ),
+                                const SizedBox(height: 16),
+                                _buildInputLabel('Department'),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: _deptController,
+                                  icon: Icons.work_outline,
+                                  hint: 'Engineering',
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              _buildInputLabel('Email'),
+                              const SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _emailController,
+                                icon: Icons.email_outlined,
+                                hint: 'user@braandins.com',
+                              ),
+                              const SizedBox(height: 16),
+
+                              _buildInputLabel('Password'),
+                              const SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _passwordController,
+                                icon: Icons.lock_outline,
+                                hint: '••••••••',
+                                isPassword: true,
+                              ),
+
+                              if (_isLogin)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _showForgotPasswordDialog,
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: GoogleFonts.spaceMono(
+                                        fontSize: 12,
+                                        color: Colors.white70,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            const SizedBox(height: 32),
+                              const SizedBox(height: 32),
 
-                            Consumer<AuthProvider>(
-                              builder: (context, auth, _) => NeoButton(
-                                text: _isLogin
-                                    ? 'ENTER SYSTEM'
-                                    : 'CREATE ACCOUNT',
-                                isLoading: auth.isLoading,
-                                onPressed: _handleSubmit,
-                                icon: Icon(
-                                  _isLogin
-                                      ? Icons.arrow_forward
-                                      : Icons.person_add,
-                                  color: Colors.white,
+                              Consumer<AuthProvider>(
+                                builder: (context, auth, _) => NeoButton(
+                                  text: _isLogin
+                                      ? 'ENTER SYSTEM'
+                                      : 'CREATE ACCOUNT',
+                                  isLoading: auth.isLoading,
+                                  onPressed: _handleSubmit,
+                                  icon: Icon(
+                                    _isLogin
+                                        ? Icons.arrow_forward
+                                        : Icons.person_add,
+                                    color: Colors
+                                        .black, // Changed to black for contrast on Neon Green
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            const SizedBox(height: 24),
-                            TextButton(
-                              onPressed: _toggleMode,
-                              child: RichText(
-                                text: TextSpan(
-                                  style: GoogleFonts.spaceMono(
-                                    fontSize: 12,
-                                    color: Colors.white60,
+                              const SizedBox(height: 16),
+
+                              // Google Sign In Button
+                              OutlinedButton(
+                                onPressed: () async {
+                                  final auth = Provider.of<AuthProvider>(
+                                      context,
+                                      listen: false);
+                                  final error = await auth.signInWithGoogle();
+                                  if (error != null && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          error,
+                                          style: GoogleFonts.spaceMono(
+                                              color: Colors.white),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 20),
+                                  side: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
                                   ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  backgroundColor: Colors.transparent,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    TextSpan(
-                                      text: _isLogin
-                                          ? 'New here? '
-                                          : 'Already have an account? ',
+                                    Image.network(
+                                      'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
+                                      height: 24,
+                                      width: 24,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(Icons.g_mobiledata,
+                                                  color: Colors.white),
                                     ),
-                                    TextSpan(
-                                      text: _isLogin ? 'SIGN UP' : 'LOGIN',
-                                      style: TextStyle(
-                                        color: AppColors.brandSecondary,
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'CONTINUE WITH GOOGLE',
+                                      style: GoogleFonts.spaceGrotesk(
                                         fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: 1.0,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
+
+                              const SizedBox(height: 24),
+                              TextButton(
+                                onPressed: _toggleMode,
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.spaceMono(
+                                      fontSize: 12,
+                                      color: Colors.white60,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: _isLogin
+                                            ? 'New here? '
+                                            : 'Already have an account? ',
+                                      ),
+                                      TextSpan(
+                                        text: _isLogin ? 'SIGN UP' : 'LOGIN',
+                                        style: TextStyle(
+                                          color: AppColors.brandSecondary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -488,4 +561,29 @@ class _WebAuthScreenState extends State<WebAuthScreen> {
       ),
     );
   }
+}
+
+class GridPainter extends CustomPainter {
+  final Color color;
+  GridPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    const spacing = 40.0;
+
+    for (double i = 0; i < size.width; i += spacing) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+
+    for (double i = 0; i < size.height; i += spacing) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

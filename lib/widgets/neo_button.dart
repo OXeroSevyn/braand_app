@@ -27,7 +27,6 @@ class NeoButton extends StatefulWidget {
 class _NeoButtonState extends State<NeoButton>
     with SingleTickerProviderStateMixin {
   bool _isHovered = false;
-  bool _isPressed = false;
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -57,15 +56,12 @@ class _NeoButtonState extends State<NeoButton>
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTapDown: (_) {
-          setState(() => _isPressed = true);
           _controller.forward();
         },
         onTapUp: (_) {
-          setState(() => _isPressed = false);
           _controller.reverse();
         },
         onTapCancel: () {
-          setState(() => _isPressed = false);
           _controller.reverse();
         },
         onTap: widget.onPressed,

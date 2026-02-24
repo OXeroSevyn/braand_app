@@ -7,7 +7,6 @@ import '../providers/theme_provider.dart';
 import 'web_admin_view.dart';
 import 'web_employee_view.dart';
 import '../widgets/neo_card.dart';
-import '../widgets/glass_container.dart';
 
 class WebDashboardScreen extends StatelessWidget {
   const WebDashboardScreen({super.key});
@@ -15,8 +14,6 @@ class WebDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthProvider>(context).user!;
-    // Force dark mode for premium feel
-    const isDark = true;
 
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
