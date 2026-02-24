@@ -41,3 +41,12 @@ Click **"Deploy"**. Vercel will build and host your site automatically!
 
 ## 🔒 Security Note
 After deployment, add your new Vercel URL (e.g., `https://braand-next.vercel.app`) to your **Supabase Dashboard** under **Settings -> API -> Allowed Origins** to enable CORS for Authentication.
+
+## 🛠️ Troubleshooting 404 Errors
+
+If you see a **404: NOT_FOUND** error after deploying:
+
+1.  **Check Root Directory**: Go to Vercel DASHBOARD -> Settings -> General. Ensure "Root Directory" is set to `web-next`. If it's empty, Vercel is looking in the wrong place.
+2.  **Check Framework Preset**: Ensure it is set to "Next.js".
+3.  **Check Build Logs**: Go to the "Deployments" tab in Vercel and click on the latest one. If the build failed, it will show the error there.
+4.  **Redeploy**: After fixing the Root Directory, go to the "Deployments" tab, click the three dots on the latest deployment, and select **"Redeploy"**.
