@@ -2,7 +2,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter/foundation.dart';
 import '../models/office_location.dart';
 import 'supabase_service.dart';
-import 'dart:math' show cos, sqrt, asin;
+import 'dart:math' show cos, sqrt, asin, sin, pi;
 
 class LocationService {
   final SupabaseService _supabase = SupabaseService();
@@ -31,33 +31,66 @@ class LocationService {
   /// Get current device location
   Future<Position?> getCurrentLocation() async {
     try {
+      debugPrint('📍 Starting location fetch...');
+
       // Check permission first without requesting (faster)
       LocationPermission permission = await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
+        debugPrint('📍 Permission denied, requesting...');
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return null;
+        if (permission == LocationPermission.denied) {
+          debugPrint('📍 Permission denied again');
+          return null;
+        }
       }
 
-      if (permission == LocationPermission.deniedForever) return null;
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('📍 Permission denied forever');
+        return null;
+      }
 
-      // Try last known position first to speed up
+      // Try last known position first (only if very recent)
       final lastPosition = await Geolocator.getLastKnownPosition();
       final now = DateTime.now();
 
-      // If last known position is recent (e.g. < 2 mins), use it
       if (lastPosition != null &&
-          now.difference(lastPosition.timestamp).inMinutes < 2) {
+          now.difference(lastPosition.timestamp).inMinutes < 1) {
+        debugPrint('📍 Using recent last known position');
         return lastPosition;
       }
 
-      // Otherwise get fresh position
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10), // Add timeout
-      );
+      // Web specific optimization: Try a quick fetch first
+      if (kIsWeb) {
+        try {
+          debugPrint('🌐 Web: Attempting quick location fetch...');
+          return await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.medium,
+            timeLimit: const Duration(seconds: 5),
+          );
+        } catch (e) {
+          debugPrint('🌐 Web: Quick fetch failed, proceeding to high accuracy');
+        }
+      }
+
+      // Robust fetch strategy: Try high accuracy first
+      try {
+        debugPrint('📍 Fetching high accuracy location...');
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high, // Use high for attendance
+          timeLimit: const Duration(seconds: 15), // Longer timeout
+        );
+      } catch (e) {
+        debugPrint(
+            '📍 High accuracy fetch failed: $e. Falling back to medium...');
+        // Fallback to medium accuracy if high fails
+        return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 10),
+        );
+      }
     } catch (e) {
-      debugPrint('Error getting current location: $e');
+      debugPrint('❌ Error getting current location: $e');
       return null;
     }
   }
@@ -121,32 +154,31 @@ class LocationService {
   }
 
   /// Calculate distance between two coordinates in meters
-  /// Uses Haversine formula
   double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const earthRadius = 6371000; // meters
+    try {
+      // Use Geolocator's built-in distance calculation for better precision
+      return Geolocator.distanceBetween(lat1, lon1, lat2, lon2);
+    } catch (e) {
+      // Fallback to manual Haversine if Geolocator fails
+      const earthRadius = 6371000; // meters
 
-    final dLat = _toRadians(lat2 - lat1);
-    final dLon = _toRadians(lon2 - lon1);
+      final dLat = _toRadians(lat2 - lat1);
+      final dLon = _toRadians(lon2 - lon1);
 
-    final a = (sin(dLat / 2) * sin(dLat / 2)) +
-        (cos(_toRadians(lat1)) *
-            cos(_toRadians(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2));
+      final a = (sin(dLat / 2) * sin(dLat / 2)) +
+          (cos(_toRadians(lat1)) *
+              cos(_toRadians(lat2)) *
+              sin(dLon / 2) *
+              sin(dLon / 2));
 
-    final c = 2 * asin(sqrt(a));
+      final c = 2 * asin(sqrt(a));
 
-    return earthRadius * c;
+      return earthRadius * c;
+    }
   }
 
   double _toRadians(double degree) {
-    return degree * (3.141592653589793 / 180);
-  }
-
-  double sin(double radians) {
-    return radians -
-        (radians * radians * radians) / 6 +
-        (radians * radians * radians * radians * radians) / 120;
+    return degree * (pi / 180);
   }
 
   /// Get nearest office location
