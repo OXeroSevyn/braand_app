@@ -1,49 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --neon-green: #39FF14;
+  --background: #0A0A0A;
+  --foreground: #FFFFFF;
+  --neon-green: #A3FF33;
   --pure-black: #000000;
-  --pure-white: #ffffff;
-  --brutal-shadow: 8px 8px 0px 0px #000000;
+  --dark-grey: #1A1A1A;
+  --brutal-shadow: 4px 4px 0px 0px #000000;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-neon-green: var(--neon-green);
-  --color-pure-black: var(--pure-black);
-  --color-pure-white: var(--pure-white);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-dark-grey: var(--dark-grey);
 }
 
 body {
   background-color: var(--background);
-  background-image:
-    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Starry Grid Background Effect */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(circle at 2px 2px, rgba(163, 255, 51, 0.1) 1px, transparent 0);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: -1;
 }
 
 @layer utilities {
-  .brutal-border {
-    border: 3px solid black;
+  .brutal-card {
+    @apply bg-dark-grey border-2 border-black shadow-[6px_6px_0px_0px_rgba(0, 0, 0, 1)] transition-all;
   }
 
-  .brutal-shadow {
-    box-shadow: var(--brutal-shadow);
+  .brutal-card:hover {
+    @apply -translate-x-1 -translate-y-1 shadow-[10px_10px_0px_0px_rgba(0, 0, 0, 1)];
   }
 
-  .glass {
-    @apply bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_#000000] transition-all;
+  .neon-border {
+    border: 2px solid var(--neon-green);
   }
 
-  .glass:hover {
-    @apply -translate-x-1 -translate-y-1 shadow-[12px_12px_0px_0px_#000000];
+  .text-neon {
+    color: var(--neon-green);
+    text-shadow: 0 0 10px rgba(163, 255, 51, 0.5);
   }
 }

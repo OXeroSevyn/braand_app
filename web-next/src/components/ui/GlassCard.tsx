@@ -2,24 +2,27 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import React from "react";
+import { ReactNode } from "react";
 
 interface GlassCardProps {
-    children: React.ReactNode;
+    children: ReactNode;
     className?: string;
     hover?: boolean;
     delay?: number;
 }
 
+/**
+ * GlassCard is now a BrutalCard to match the Cyber-Brutalist theme.
+ * Keeping the name for backward compatibility.
+ */
 export const GlassCard = ({ children, className, hover = true, delay = 0 }: GlassCardProps) => {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay, ease: "easeOut" }}
-            whileHover={hover ? { translateX: -4, translateY: -4 } : {}}
+            transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-                "glass border-[3px] border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 relative overflow-hidden group transition-all duration-200",
+                "brutal-card rounded-none p-6 relative overflow-hidden group",
                 className
             )}
         >

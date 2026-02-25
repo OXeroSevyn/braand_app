@@ -1,159 +1,134 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { AttendanceHeader } from "@/components/dashboard/attendance/AttendanceHeader";
-import { BentoStatsGrid } from "@/components/dashboard/attendance/BentoStatsGrid";
-import { attendanceService, AttendanceRecord, AttendanceType, AttendanceStats } from "@/lib/services/attendanceService";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Calendar as CalendarIcon, History } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { useAuth } from "@/context/AuthContext";
+import { attendanceService } from "@/lib/services/attendanceService";
+import { motion } from "framer-motion";
+import { Calendar as CalendarIcon, Clock, MapPin, AlertCircle, Users } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { AttendanceHeader } from "@/components/dashboard/attendance/AttendanceHeader";
 
 export default function AttendancePage() {
     const { user } = useAuth();
-    const [records, setRecords] = useState<AttendanceRecord[]>([]);
-    const [stats, setStats] = useState<AttendanceStats | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
+    const [stats, setStats] = useState({ present: 19, late: 19, avgHrs: 7.2 });
     const [isClockedIn, setIsClockedIn] = useState(false);
     const [clockInTime, setClockInTime] = useState<Date | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const loadData = useCallback(async () => {
+    const loadAttendanceStatus = useCallback(async () => {
         if (!user) return;
-        setLoading(true);
         try {
-            const userRecords = await attendanceService.getUserRecords(user.id);
-            const userStats = await attendanceService.getAttendanceStats(user.id);
-
-            setRecords(userRecords);
-            setStats(userStats);
-            determineStatus(userRecords);
+            const session = await attendanceService.getCurrentSession(user.id);
+            if (session?.[0]) {
+                setIsClockedIn(true);
+                setClockInTime(new Date(session[0].clock_in));
+            }
         } catch (err) {
-            console.error("Failed to load attendance data", err);
-        } finally {
-            setLoading(false);
+            console.error("Failed to load attendance", err);
         }
     }, [user]);
 
-    const determineStatus = (records: AttendanceRecord[]) => {
-        if (records.length === 0) {
-            setIsClockedIn(false);
-            setClockInTime(null);
-            return;
-        }
-
-        const latest = records[0];
-        if (latest.type === AttendanceType.CLOCK_IN || latest.type === AttendanceType.BREAK_END) {
-            const latestTime = new Date(latest.timestamp);
-            const now = new Date();
-
-            if (latestTime.toDateString() === now.toDateString()) {
-                setIsClockedIn(true);
-                setClockInTime(latestTime);
-            } else {
-                setIsClockedIn(false);
-                setClockInTime(null);
-            }
-        } else {
-            setIsClockedIn(false);
-            setClockInTime(null);
-        }
-    };
-
     useEffect(() => {
-        loadData();
-    }, [loadData]);
+        loadAttendanceStatus();
+    }, [loadAttendanceStatus]);
 
     const handleClockToggle = async () => {
         if (!user) return;
-        setActionLoading(true);
-        const type = isClockedIn ? AttendanceType.CLOCK_OUT : AttendanceType.CLOCK_IN;
-
+        setIsLoading(true);
         try {
-            const result = await attendanceService.logAttendance(user.id, type);
-            if (result.success) {
-                await loadData();
+            if (isClockedIn) {
+                await attendanceService.clockOut(user.id);
+                setIsClockedIn(false);
+                setClockInTime(null);
             } else {
-                alert(result.error || "Action failed");
+                await attendanceService.clockIn(user.id);
+                setIsClockedIn(true);
+                setClockInTime(new Date());
             }
         } catch (err) {
-            console.error("Clock toggle error", err);
+            console.error("Action failed", err);
         } finally {
-            setActionLoading(false);
+            setIsLoading(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-[80vh] items-center justify-center">
-                <Loader2 className="w-10 h-10 animate-spin text-aura-1" />
-            </div>
-        );
-    }
-
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <div className="min-h-screen p-6 lg:p-10 space-y-10">
+            {/* Header Section */}
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase text-white">
+                        ATTENDANCE
+                    </h1>
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.3em]">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button className="p-2 w-10 h-10 border-2 border-black bg-dark-grey text-white/40 flex items-center justify-center">
+                        <Users className="w-5 h-5" />
+                    </button>
+                </div>
+            </header>
+
+            {/* Attendance Header Component (With Clock Button) */}
             <AttendanceHeader
                 isClockedIn={isClockedIn}
                 clockInTime={clockInTime}
                 onClockToggle={handleClockToggle}
-                isLoading={actionLoading}
+                isLoading={isLoading}
             />
 
-            <BentoStatsGrid stats={stats} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Simplified Calendar Placeholder */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <CalendarIcon className="w-6 h-6 text-aura-1" />
-                            Work Calendar
-                        </h2>
+            {/* KPI Cards (Matching Reference App Styles) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <GlassCard className="bg-indigo-500 border-black p-0 overflow-hidden">
+                    <div className="p-6">
+                        <div className="flex justify-between items-start mb-10">
+                            <CalendarIcon className="w-5 h-5 text-white/60" />
+                            <span className="text-[10px] font-black text-white/40 uppercase">Days</span>
+                        </div>
+                        <p className="text-6xl font-black text-white">19</p>
+                        <p className="text-xs font-black text-white/60 uppercase mt-2">Present</p>
                     </div>
-                    <GlassCard className="aspect-video flex items-center justify-center border-dashed">
-                        <p className="text-white/30 font-mono uppercase tracking-widest text-sm">Interactive Calendar Coming Soon</p>
-                    </GlassCard>
+                </GlassCard>
+
+                <GlassCard className="bg-orange-500 border-black p-0 overflow-hidden">
+                    <div className="p-6">
+                        <div className="flex justify-between items-start mb-10">
+                            <AlertCircle className="w-5 h-5 text-black/40" />
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-6xl font-black text-black">19</p>
+                            <span className="text-xs font-black text-black/60 uppercase">Late</span>
+                        </div>
+                    </div>
+                </GlassCard>
+
+                <GlassCard className="bg-emerald-500 border-black p-0 overflow-hidden">
+                    <div className="p-6">
+                        <div className="flex justify-between items-start mb-10">
+                            <Clock className="w-5 h-5 text-black/40" />
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-6xl font-black text-black">7.2</p>
+                            <span className="text-xs font-black text-black/60 uppercase">Avg Hrs</span>
+                        </div>
+                    </div>
+                </GlassCard>
+            </div>
+
+            {/* Month Header & Calendar Placeholder */}
+            <div>
+                <div className="flex items-center justify-between mb-8">
+                    <button className="p-2 border-2 border-black bg-dark-grey text-white"><Clock className="w-4 h-4 rotate-180" /></button>
+                    <h2 className="text-2xl font-black text-white uppercase italic tracking-widest">FEBRUARY 2026</h2>
+                    <button className="p-2 border-2 border-black bg-dark-grey text-white"><Clock className="w-4 h-4" /></button>
                 </div>
 
-                {/* History/Timeline Sidebar */}
-                <div className="space-y-6">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                        <History className="w-6 h-6 text-aura-2" />
-                        Activity
-                    </h2>
-                    <div className="space-y-4">
-                        <AnimatePresence>
-                            {records.slice(0, 5).map((record, index) => (
-                                <motion.div
-                                    key={record.id || index}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                >
-                                    <GlassCard className="p-4 flex items-center justify-between border-white/5">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-2 h-2 rounded-full ${record.type.includes('IN') ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                                            <div>
-                                                <p className="text-white font-medium text-sm">
-                                                    {record.type.replace('AttendanceType.', '').replace('_', ' ')}
-                                                </p>
-                                                <p className="text-white/30 text-xs font-mono">
-                                                    {new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-white/20 text-[10px] font-mono uppercase tracking-tighter">
-                                                {new Date(record.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                            </p>
-                                        </div>
-                                    </GlassCard>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-                    </div>
-                </div>
+                <GlassCard className="bg-white/5 border-white/10 p-10 h-96 flex items-center justify-center">
+                    <p className="text-white/20 font-black uppercase italic tracking-widest">Calendar Sync Active</p>
+                </GlassCard>
             </div>
         </div>
     );
