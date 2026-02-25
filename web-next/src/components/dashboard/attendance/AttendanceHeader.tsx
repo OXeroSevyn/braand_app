@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 import { GlassCard } from "../../ui/GlassCard";
 import { LogIn, LogOut, Loader2, MapPin, AlertCircle } from "lucide-react";
@@ -36,11 +38,29 @@ export function AttendanceHeader({
 
     const isOutOfRange = !isClockedIn && locStatus?.isInRange === false;
 
-    return (
-        <GlassCard className="p-8 overflow-hidden relative">
-            {/* Background Accent */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-aura-1/10 blur-[100px] -z-10 rounded-full translate-x-1/2 -translate-y-1/2" />
+    const buttonContent = isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : isClockedIn ? <LogOut className="w-5 h-5" /> : <LogIn className="w-5 h-5" />;
+    const buttonText = isLoading ? 'Verifying...' : isClockedIn ? 'Clock Out' : 'Clock In Now';
 
+    const renderClockButton = () => {
+        const buttonStyles = isClockedIn ? 'bg-white text-black' : 'bg-neon-green text-black';
+        const disabledStyles = (isLoading || isOutOfRange) ? 'opacity-50 cursor-not-allowed grayscale' : '';
+
+        return (
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onClockToggle}
+                disabled={isLoading || isOutOfRange}
+                className={`relative group px-10 py-5 border-4 border-black font-black uppercase tracking-tighter transition-all duration-200 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] flex items-center gap-3 ${buttonStyles} ${disabledStyles}`}
+            >
+                {buttonContent}
+                <span className="relative z-10">{buttonText}</span>
+            </motion.button>
+        );
+    };
+
+    return (
+        <GlassCard className="p-8 overflow-hidden relative border-black bg-white">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
                 <div>
                     <motion.div
@@ -48,59 +68,36 @@ export function AttendanceHeader({
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-3 mb-4"
                     >
-                        <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-[0.2em]">
-                            Verification Active
+                        <span className="px-5 py-2 border-4 border-black bg-neon-green text-xs font-black uppercase tracking-[0.2em] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black">
+                            LIVE TRACKING
                         </span>
                         {locStatus && (
-                            <span className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest ${locStatus.isInRange ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                <MapPin className="w-3 h-3" />
+                            <span className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest p-2 border-4 border-black ${locStatus.isInRange ? 'bg-emerald-400' : 'bg-rose-400'} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black`}>
+                                <MapPin className="w-4 h-4" />
                                 {locStatus.isInRange ? 'In Range' : 'Out of Range'}
                             </span>
                         )}
                     </motion.div>
 
-                    <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-2">
-                        {isClockedIn ? "Session Active" : "Time Tracking"}
+                    <h1 className="text-4xl md:text-6xl font-black text-black tracking-tighter mb-4 uppercase italic leading-none">
+                        {isClockedIn ? "Session Active" : "Time Tracker"}
                     </h1>
-                    <p className="text-white/50 font-medium text-lg">
-                        {formattedDate} • <span className="text-white font-mono">{formattedTime}</span>
+                    <p className="text-black font-black text-xl border-b-8 border-black pb-1 inline-block uppercase italic">
+                        {formattedTime} <span className="text-black/40">//</span> {formattedDate}
                     </p>
                 </div>
 
                 <div className="flex items-center gap-6">
                     {isClockedIn && clockInTime && (
-                        <div className="text-right hidden sm:block">
-                            <p className="text-white/30 text-xs font-mono uppercase tracking-widest mb-1">Started At</p>
-                            <p className="text-xl font-bold text-white">
+                        <div className="text-right hidden sm:block border-l-8 border-black pl-8">
+                            <p className="text-black/60 text-xs font-black uppercase tracking-widest mb-1">Started at</p>
+                            <p className="text-3xl font-black text-black italic">
                                 {clockInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                         </div>
                     )}
 
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={onClockToggle}
-                        disabled={isLoading || isOutOfRange}
-                        className={`relative group px-8 py-4 rounded-2xl flex items-center gap-3 font-bold transition-all duration-500 overflow-hidden
-                            ${isClockedIn
-                                ? 'bg-white text-black hover:bg-white/90'
-                                : 'bg-gradient-to-r from-aura-1 to-aura-2 text-white shadow-lg shadow-aura-1/20'
-                            }
-                            ${(isLoading || isOutOfRange) ? 'opacity-50 cursor-not-allowed grayscale' : ''}
-                        `}
-                    >
-                        {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : isClockedIn ? (
-                            <LogOut className="w-5 h-5" />
-                        ) : (
-                            <LogIn className="w-5 h-5" />
-                        )}
-                        <span className="relative z-10">
-                            {isLoading ? 'Verifying...' : isClockedIn ? 'Clock Out' : 'Clock In Now'}
-                        </span>
-                    </motion.button>
+                    {renderClockButton()}
                 </div>
             </div>
 
@@ -108,9 +105,9 @@ export function AttendanceHeader({
                 <motion.p
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-6 text-rose-400 text-sm flex items-center gap-2 bg-rose-400/10 p-3 rounded-xl border border-rose-400/20"
+                    className="mt-10 text-black text-sm font-black flex items-center gap-3 bg-rose-400 p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] uppercase italic"
                 >
-                    <AlertCircle className="w-4 h-4" />
+                    <AlertCircle className="w-6 h-6" />
                     {locStatus?.message}
                 </motion.p>
             )}
