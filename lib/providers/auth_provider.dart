@@ -41,6 +41,8 @@ class AuthProvider with ChangeNotifier {
     _supabase.auth.onAuthStateChange.listen((data) {
       final session = data.session;
       final event = data.event;
+      debugPrint(
+          '🔄 Auth State Change: $event | Session: ${session != null ? "Active" : "Null"}');
 
       if (event == supabase.AuthChangeEvent.passwordRecovery) {
         debugPrint('🔐 Password recovery event detected!');
@@ -128,14 +130,16 @@ class AuthProvider with ChangeNotifier {
       // Start listening for custom notifications
       NotificationService().listenForCustomNotifications(_user!.id);
 
-      // Save FCM Token
-      await _saveFcmToken();
+      debugPrint(
+          '✅ User profile set: ${_user?.name} | Status: ${_user?.status}');
     } on supabase.AuthException catch (e) {
-      debugPrint('Auth error loading user: ${e.message}');
+      debugPrint('❌ Supabase Auth Error loading user: ${e.message}');
     } catch (e) {
-      debugPrint('Error loading user: $e');
+      debugPrint('❌ Unexpected Error loading user: $e');
       debugPrint('Error type: ${e.runtimeType}');
     } finally {
+      debugPrint(
+          '🏁 Auth Initialization/Loading Complete. User: ${_user != null ? "Logged In" : "Logged Out"}');
       _isLoading = false;
       notifyListeners();
     }

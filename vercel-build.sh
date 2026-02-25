@@ -13,4 +13,4 @@ flutter precache
 flutter doctor
 
 # 4. Build
-flutter build web --release --base-href=/
+flutter build web --release --web-renderer html --base-href=/
