@@ -23,7 +23,8 @@ import 'admin_employee_list_screen.dart';
 import 'notice_board_screen.dart';
 
 class WebAdminView extends StatefulWidget {
-  const WebAdminView({super.key});
+  final int initialIndex;
+  const WebAdminView({super.key, this.initialIndex = 0});
 
   @override
   State<WebAdminView> createState() => _WebAdminViewState();
@@ -31,7 +32,7 @@ class WebAdminView extends StatefulWidget {
 
 class _WebAdminViewState extends State<WebAdminView> {
   final SupabaseService _supabaseService = SupabaseService();
-  int _currentIndex = 0;
+  late int _currentIndex;
   int _unreadCount = 0;
   Timer? _refreshTimer;
   Timer? _unreadCheckTimer;
@@ -41,6 +42,7 @@ class _WebAdminViewState extends State<WebAdminView> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     _loadData();
     _startAutoRefresh();
     _startUnreadCheck();
@@ -232,9 +234,7 @@ class _WebAdminViewState extends State<WebAdminView> {
     final user = Provider.of<AuthProvider>(context).user;
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     final List<Widget> screens = [
@@ -243,55 +243,12 @@ class _WebAdminViewState extends State<WebAdminView> {
       const ReportsScreen(),
       const AdminTasksScreen(),
       const AdminEmployeeListScreen(),
-      NoticeBoardScreen(user: user!), // Added Notice Board with user
-      MessagesScreen(user: user!, isAdminView: true),
+      NoticeBoardScreen(user: user),
+      MessagesScreen(user: user, isAdminView: true),
     ];
 
-    return Scaffold(
-      body: screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.brand,
-        unselectedItemColor: Colors.grey,
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.access_time),
-            label: 'Attendance',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Reports',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.task_alt),
-            label: 'Tasks',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Employees',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_active),
-            label: 'Notices',
-          ),
-          BottomNavigationBarItem(
-            icon: _unreadCount > 0
-                ? Badge(
-                    label: Text('$_unreadCount'),
-                    child: const Icon(Icons.message),
-                  )
-                : const Icon(Icons.message),
-            label: 'Messages',
-          ),
-        ],
-      ),
-    );
+    // Return the specific screen directly since WebDashboardScreen handles the shell
+    return screens[_currentIndex.clamp(0, screens.length - 1)];
   }
 
   Widget _buildDashboard(bool isDark) {

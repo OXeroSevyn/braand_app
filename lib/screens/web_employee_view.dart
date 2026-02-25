@@ -23,7 +23,8 @@ import 'notice_board_screen.dart';
 
 class WebEmployeeView extends StatefulWidget {
   final User user;
-  const WebEmployeeView({super.key, required this.user});
+  final int initialIndex;
+  const WebEmployeeView({super.key, required this.user, this.initialIndex = 0});
 
   @override
   State<WebEmployeeView> createState() => _WebEmployeeViewState();
@@ -32,7 +33,7 @@ class WebEmployeeView extends StatefulWidget {
 class _WebEmployeeViewState extends State<WebEmployeeView> {
   final SupabaseService _supabaseService = SupabaseService();
 
-  int _currentIndex = 0;
+  late int _currentIndex;
   int _unreadCount = 0;
   Timer? _refreshTimer;
   Timer? _unreadCheckTimer;
@@ -43,6 +44,7 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     _loadData();
     _startAutoRefresh();
     _startUnreadCheck();
@@ -238,53 +240,13 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
     final List<Widget> screens = [
       _buildDashboard(isDark),
       AttendanceScreen(user: widget.user),
-      NoticeBoardScreen(user: widget.user), // Added Notice Board
+      NoticeBoardScreen(user: widget.user),
       MessagesScreen(user: widget.user),
       EmployeeTasksScreen(user: widget.user),
       ProfileScreen(user: widget.user),
     ];
 
-    return Scaffold(
-      body: screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.brand,
-        unselectedItemColor: Colors.grey,
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.access_time),
-            label: 'Attendance',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_active),
-            label: 'Notices',
-          ),
-          BottomNavigationBarItem(
-            icon: _unreadCount > 0
-                ? Badge(
-                    label: Text('$_unreadCount'),
-                    child: const Icon(Icons.message),
-                  )
-                : const Icon(Icons.message),
-            label: 'Messages',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.task_alt),
-            label: 'Tasks',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
+    return screens[_currentIndex.clamp(0, screens.length - 1)];
   }
 
   Widget _buildDashboard(bool isDark) {

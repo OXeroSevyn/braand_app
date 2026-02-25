@@ -1,229 +1,245 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../constants.dart';
+import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import 'web_admin_view.dart';
 import 'web_employee_view.dart';
-import '../widgets/neo_card.dart';
+import 'attendance_screen.dart';
+import 'messages_screen.dart';
+import 'notice_board_screen.dart';
+import 'user_management_screen.dart';
+import 'admin_employee_list_screen.dart';
+import 'reports_screen.dart';
 
-class WebDashboardScreen extends StatelessWidget {
+class WebDashboardScreen extends StatefulWidget {
   const WebDashboardScreen({super.key});
 
   @override
+  State<WebDashboardScreen> createState() => _WebDashboardScreenState();
+}
+
+class _WebDashboardScreenState extends State<WebDashboardScreen> {
+  int _currentNavIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user!;
+    final auth = Provider.of<AuthProvider>(context);
+    final user = auth.user!;
 
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Background Gradient (Deep & Subtle)
+          // Cyber Grid Background
           Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F0F1A), // Deep Blue/Black
-                    Color(0xFF050508), // Almost Black
-                  ],
-                ),
+            child: CustomPaint(
+              painter: GridPainter(
+                color: AppColors.brand.withOpacity(0.05),
+                spacing: 40,
               ),
             ),
           ),
 
-          // Accent Glows (Top Left)
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 500,
-              height: 500,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.brand.withOpacity(0.15),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.brand.withOpacity(0.15),
-                    blurRadius: 150,
-                    spreadRadius: 50,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Accent Glows (Bottom Right)
-          Positioned(
-            bottom: -100,
-            right: -100,
-            child: Container(
-              width: 500,
-              height: 500,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.brandSecondary.withOpacity(0.1),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.brandSecondary.withOpacity(0.1),
-                    blurRadius: 150,
-                    spreadRadius: 50,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Content
+          // Main Layout
           Row(
             children: [
-              // Side Navigation (Glassmorphic)
+              // FIXED SIDEBAR (Brutalist Grid Design)
               Container(
                 width: 280,
-                padding: const EdgeInsets.all(24),
-                margin: const EdgeInsets.all(16), // Floating look
                 decoration: BoxDecoration(
-                  color: AppColors.darkSurface.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.05),
-                    width: 1,
+                  color: Colors.black,
+                  border: const Border(
+                    right: BorderSide(color: AppColors.brand, width: 2),
                   ),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Branding
-                    Center(
-                      child: RichText(
-                        text: TextSpan(
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: -1,
-                          ),
-                          children: const [
-                            TextSpan(text: 'BRAANDINS'),
-                            TextSpan(
-                                text: '.',
-                                style:
-                                    TextStyle(color: AppColors.brandSecondary)),
-                          ],
+                    // Top Branding
+                    Container(
+                      height: 100,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.brand, width: 2),
+                        ),
+                      ),
+                      child: Text(
+                        'BRAANDINS',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.brand,
+                          letterSpacing: 2,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
 
-                    // User Profile (Glass Card)
-                    NeoCard(
+                    // Navigation List
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          _buildNavItem(
+                              0, 'DASHBOARD', Icons.grid_view_rounded),
+                          _buildNavItem(1, 'ATTENDANCE', Icons.timer_outlined),
+                          _buildNavItem(2, 'NOTICES', Icons.campaign_outlined),
+                          _buildNavItem(3, 'MESSAGES', Icons.message_outlined),
+                          if (user.role == 'Admin') ...[
+                            _buildNavItem(4, 'STAFF', Icons.people_outline),
+                            _buildNavItem(
+                                5, 'ANALYTICS', Icons.analytics_outlined),
+                            _buildNavItem(
+                                6, 'SETTINGS', Icons.settings_outlined),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    // User Profile Grid Block
+                    Container(
                       padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: AppColors.brand, width: 2),
+                        ),
+                      ),
                       child: Column(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(3), // Border width
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: AppColors.brandGradient,
-                            ),
-                            child: CircleAvatar(
-                              radius: 30,
-                              backgroundColor: AppColors.darkSurface,
-                              child: Text(
-                                user.name[0],
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                          Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.brand),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    user.name[0],
+                                    style: GoogleFonts.spaceMono(
+                                        color: AppColors.brand,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      user.name.toUpperCase(),
+                                      style: GoogleFonts.spaceGrotesk(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      user.role.toUpperCase(),
+                                      style: GoogleFonts.spaceMono(
+                                        color: AppColors.brand,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          InkWell(
+                            onTap: () => auth.logout(),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.redAccent),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'TERMINATE SESSION',
+                                  style: GoogleFonts.spaceMono(
+                                    color: Colors.redAccent,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // MAIN CONTENT CONTAINER
+              Expanded(
+                child: Column(
+                  children: [
+                    // Action Bar / Breadcrumbs
+                    Container(
+                      height: 60,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: const BoxDecoration(
+                        color: Colors.black,
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.brand, width: 1),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
                           Text(
-                            user.name,
-                            style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          Text(
-                            '${user.role} • ${user.department}',
+                            _getNavTitle(_currentNavIndex),
                             style: GoogleFonts.spaceMono(
-                              fontSize: 10,
-                              color: Colors.white54,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1,
                             ),
-                            textAlign: TextAlign.center,
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                DateFormat('EEE, MMM d, yyyy')
+                                    .format(DateTime.now())
+                                    .toUpperCase(),
+                                style: GoogleFonts.spaceMono(
+                                  color: AppColors.brand,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              Consumer<ThemeProvider>(
+                                builder: (context, theme, _) => IconButton(
+                                  icon: Icon(
+                                    theme.isDarkMode
+                                        ? Icons.light_mode
+                                        : Icons.dark_mode,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  onPressed: theme.toggleTheme,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 32),
-
-                    // Navigation Items
-                    _buildNavItem(
-                      icon: Icons.dashboard_outlined,
-                      label: 'DASHBOARD',
-                      isActive: true,
-                    ),
-                    _buildNavItem(
-                      icon: Icons.people_outline,
-                      label: 'TEAM',
-                      isActive: false,
-                    ),
-                    _buildNavItem(
-                      icon: Icons.analytics_outlined,
-                      label: 'REPORTS',
-                      isActive: false,
-                    ),
-
-                    const Spacer(),
-
-                    // Theme Toggle
-                    Consumer<ThemeProvider>(
-                      builder: (context, theme, _) => _buildNavItem(
-                        icon: theme.isDarkMode
-                            ? Icons.light_mode
-                            : Icons.dark_mode,
-                        label: theme.isDarkMode ? 'LIGHT MODE' : 'DARK MODE',
-                        isActive: false,
-                        onTap: theme.toggleTheme,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Logout
-                    _buildNavItem(
-                      icon: Icons.logout,
-                      label: 'LOGOUT',
-                      isActive: false,
-                      isLogout: true,
-                      onTap: () =>
-                          Provider.of<AuthProvider>(context, listen: false)
-                              .logout(),
+                    // View Content
+                    Expanded(
+                      child: _buildBody(user),
                     ),
                   ],
-                ),
-              ),
-
-              // Main Content Area
-              Expanded(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.only(top: 16, bottom: 16, right: 16),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: user.role == 'Admin'
-                        ? const WebAdminView()
-                        : WebEmployeeView(user: user),
-                  ),
                 ),
               ),
             ],
@@ -233,66 +249,125 @@ class WebDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isActive,
-    bool isLogout = false,
-    VoidCallback? onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: isActive ? AppColors.brandGradient : null,
-              color: isActive ? null : Colors.transparent,
-              border: isActive
-                  ? null
-                  : Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isActive
-                      ? Colors.white
-                      : (isLogout ? Colors.redAccent : Colors.white60),
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: GoogleFonts.spaceMono(
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    color: isActive
-                        ? Colors.white
-                        : (isLogout ? Colors.redAccent : Colors.white60),
-                    fontSize: 12,
-                  ),
-                ),
-                if (isActive) ...[
-                  const Spacer(),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
-                  )
-                ]
-              ],
-            ),
+  Widget _buildNavItem(int index, String label, IconData icon) {
+    bool isActive = _currentNavIndex == index;
+    return InkWell(
+      onTap: () => setState(() => _currentNavIndex = index),
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.brand : Colors.transparent,
+          border: const Border(
+            bottom: BorderSide(color: AppColors.brand, width: 1),
           ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isActive ? Colors.black : Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: GoogleFonts.spaceMono(
+                color: isActive ? Colors.black : Colors.white,
+                fontWeight: isActive ? FontWeight.w900 : FontWeight.normal,
+                fontSize: 12,
+                letterSpacing: 2,
+              ),
+            ),
+            if (isActive) ...[
+              const Spacer(),
+              Container(
+                width: 8,
+                height: 8,
+                color: Colors.black,
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
+
+  String _getNavTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'DASHBOARD_LIVE';
+      case 1:
+        return 'ATTENDANCE_LOGS';
+      case 2:
+        return 'SYSTEM_NOTICES';
+      case 3:
+        return 'ENCRYPTED_MESSAGES';
+      case 4:
+        return 'STAFF_DIRECTORY';
+      case 5:
+        return 'ANALYTICS_REPORT';
+      case 6:
+        return 'SYSTEM_CONFIG';
+      default:
+        return 'TERMINAL';
+    }
+  }
+
+  Widget _buildBody(User user) {
+    // Current mapping:
+    // 0: Dashboard (WebAdminView or WebEmployeeView internal dashboard)
+    // 1: Attendance
+    // 2: Notices
+    // 3: Messages
+    // 4: Staff (Admin Only)
+    // 5: Analytics (Admin Only)
+    // 6: Settings (Admin Only)
+
+    switch (_currentNavIndex) {
+      case 0:
+        return user.role == 'Admin'
+            ? const WebAdminView(initialIndex: 0)
+            : WebEmployeeView(user: user, initialIndex: 0);
+      case 1:
+        return AttendanceScreen(user: user, isAdminView: user.role == 'Admin');
+      case 2:
+        return NoticeBoardScreen(user: user);
+      case 3:
+        return MessagesScreen(user: user, isAdminView: user.role == 'Admin');
+      case 4:
+        return const AdminEmployeeListScreen();
+      case 5:
+        return const ReportsScreen();
+      case 6:
+        return const UserManagementScreen(); // Using as general settings/config for now
+      default:
+        return const Center(child: Text('404 :: SECTION_NOT_FOUND'));
+    }
+  }
+}
+
+class GridPainter extends CustomPainter {
+  final Color color;
+  final double spacing;
+
+  GridPainter({required this.color, required this.spacing});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    for (double i = 0; i < size.width; i += spacing) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+
+    for (double i = 0; i < size.height; i += spacing) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

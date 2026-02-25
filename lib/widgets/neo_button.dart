@@ -55,15 +55,9 @@ class _NeoButtonState extends State<NeoButton>
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTapDown: (_) {
-          _controller.forward();
-        },
-        onTapUp: (_) {
-          _controller.reverse();
-        },
-        onTapCancel: () {
-          _controller.reverse();
-        },
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) => _controller.reverse(),
+        onTapCancel: () => _controller.reverse(),
         onTap: widget.onPressed,
         child: AnimatedBuilder(
           animation: _scaleAnimation,
@@ -74,23 +68,13 @@ class _NeoButtonState extends State<NeoButton>
           child: Container(
             height: 56,
             decoration: BoxDecoration(
-              gradient: AppColors.brandGradient,
-              borderRadius: BorderRadius.circular(16),
+              color: widget.color ?? AppColors.brand,
+              border: Border.all(color: Colors.black, width: 2),
               boxShadow: [
-                // Glow effect
-                if (_isHovered && !widget.isLoading)
-                  BoxShadow(
-                    color: AppColors.brand.withOpacity(0.6),
-                    offset: const Offset(0, 8),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  )
-                else
-                  BoxShadow(
-                    color: AppColors.brand.withOpacity(0.3),
-                    offset: const Offset(0, 8),
-                    blurRadius: 16,
-                    spreadRadius: -2,
+                if (_isHovered && widget.onPressed != null)
+                  const BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(4, 4),
                   ),
               ],
             ),
@@ -100,7 +84,7 @@ class _NeoButtonState extends State<NeoButton>
                 children: [
                   if (widget.icon != null) ...[
                     IconTheme(
-                      data: const IconThemeData(color: Colors.white),
+                      data: const IconThemeData(color: Colors.black),
                       child: widget.icon!,
                     ),
                     const SizedBox(width: 8),
@@ -108,10 +92,10 @@ class _NeoButtonState extends State<NeoButton>
                   Text(
                     widget.text.toUpperCase(),
                     style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                      fontSize: 15,
+                      color: widget.textColor ?? Colors.black,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -127,17 +111,16 @@ class _NeoButtonState extends State<NeoButton>
     return Container(
       height: 56,
       decoration: BoxDecoration(
-        color: AppColors.brand.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.brand.withOpacity(0.5)),
+        color: AppColors.brand.withOpacity(0.5),
+        border: Border.all(color: Colors.black, width: 2),
       ),
-      child: Center(
+      child: const Center(
         child: SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.brand),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
           ),
         ),
       ),
