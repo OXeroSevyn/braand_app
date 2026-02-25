@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../constants.dart';
 
 class NeoButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
-  final Color? color;
-  final Color? textColor;
   final Widget? icon;
   final bool isLoading;
+  final Color? color;
 
   const NeoButton({
     super.key,
     required this.text,
     this.onPressed,
-    this.color,
-    this.textColor,
     this.icon,
     this.isLoading = false,
+    this.color,
   });
 
   @override
@@ -26,7 +23,6 @@ class NeoButton extends StatefulWidget {
 
 class _NeoButtonState extends State<NeoButton>
     with SingleTickerProviderStateMixin {
-  bool _isHovered = false;
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -34,9 +30,12 @@ class _NeoButtonState extends State<NeoButton>
   void initState() {
     super.initState();
     _controller = AnimationController(
-        duration: const Duration(milliseconds: 150), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -47,80 +46,64 @@ class _NeoButtonState extends State<NeoButton>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.isLoading) {
-      return _buildLoading();
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => _controller.forward(),
-        onTapUp: (_) => _controller.reverse(),
-        onTapCancel: () => _controller.reverse(),
-        onTap: widget.onPressed,
-        child: AnimatedBuilder(
-          animation: _scaleAnimation,
-          builder: (context, child) => Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          ),
-          child: Container(
-            height: 56,
-            decoration: BoxDecoration(
-              color: widget.color ?? AppColors.brand,
-              border: Border.all(color: Colors.black, width: 2),
-              boxShadow: [
-                if (_isHovered && widget.onPressed != null)
-                  const BoxShadow(
-                    color: Colors.black,
-                    offset: Offset(4, 4),
-                  ),
-              ],
-            ),
-            child: Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (widget.icon != null) ...[
-                    IconTheme(
-                      data: const IconThemeData(color: Colors.black),
-                      child: widget.icon!,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    widget.text.toUpperCase(),
-                    style: GoogleFonts.spaceGrotesk(
-                      color: widget.textColor ?? Colors.black,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    return GestureDetector(
+      onTapDown: widget.onPressed == null ? null : (_) => _controller.forward(),
+      onTapUp: widget.onPressed == null ? null : (_) => _controller.reverse(),
+      onTapCancel:
+          widget.onPressed == null ? null : () => _controller.reverse(),
+      onTap: widget.onPressed,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) => Transform.scale(
+          scale: _scaleAnimation.value,
+          child: child,
         ),
-      ),
-    );
-  }
-
-  Widget _buildLoading() {
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: AppColors.brand.withOpacity(0.5),
-        border: Border.all(color: Colors.black, width: 2),
-      ),
-      child: const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: widget.onPressed == null
+                ? Colors.grey.withOpacity(0.1)
+                : (widget.color ?? AppColors.brand),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black12,
+              width: 1,
+            ),
+          ),
+          child: Center(
+            child: widget.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (widget.icon != null) ...[
+                        IconTheme(
+                          data: const IconThemeData(
+                              color: Colors.black, size: 20),
+                          child: widget.icon!,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        widget.text,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

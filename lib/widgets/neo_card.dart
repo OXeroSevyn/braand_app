@@ -6,9 +6,10 @@ class NeoCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final Color? shadowColor;
-  final double offset; // Kept for API compatibility
+  final double offset;
   final EdgeInsetsGeometry padding;
-  final double borderThickness; // Kept for compatibility
+  final double borderThickness;
+  final double borderRadius;
 
   const NeoCard({
     super.key,
@@ -16,9 +17,10 @@ class NeoCard extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.shadowColor,
-    this.offset = 8.0,
-    this.padding = const EdgeInsets.all(24.0),
+    this.offset = 0.0,
+    this.padding = const EdgeInsets.all(20.0),
     this.borderThickness = 2.0,
+    this.borderRadius = 16.0,
   });
 
   @override
@@ -28,17 +30,13 @@ class NeoCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? (isDark ? Colors.black : Colors.white),
+        color: backgroundColor ??
+            (isDark ? const Color(0xFF0A0A0A) : Colors.white),
+        borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
           color: borderColor ?? AppColors.brand,
-          width: 2,
+          width: borderThickness,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor ?? (isDark ? Colors.black : Colors.black),
-            offset: const Offset(4, 4),
-          ),
-        ],
       ),
       child: child,
     );

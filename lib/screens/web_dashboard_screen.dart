@@ -34,12 +34,12 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Cyber Grid Background
+          // Subtle Cyber Grid
           Positioned.fill(
             child: CustomPaint(
               painter: GridPainter(
-                color: AppColors.brand.withOpacity(0.05),
-                spacing: 40,
+                color: AppColors.brand.withOpacity(0.03),
+                spacing: 60,
               ),
             ),
           ),
@@ -47,81 +47,104 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
           // Main Layout
           Row(
             children: [
-              // FIXED SIDEBAR (Brutalist Grid Design)
+              // CLEAN SIDEBAR
               Container(
-                width: 280,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  border: const Border(
-                    right: BorderSide(color: AppColors.brand, width: 2),
+                width: 260,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0A0A0A),
+                  border: Border(
+                    right: BorderSide(color: Color(0xFF1A1A1A), width: 1),
                   ),
                 ),
                 child: Column(
                   children: [
-                    // Top Branding
+                    // Branding
                     Container(
                       height: 100,
                       alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: AppColors.brand, width: 2),
-                        ),
-                      ),
-                      child: Text(
-                        'BRAANDINS',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.brand,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ),
-
-                    // Navigation List
-                    Expanded(
-                      child: ListView(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildNavItem(
-                              0, 'DASHBOARD', Icons.grid_view_rounded),
-                          _buildNavItem(1, 'ATTENDANCE', Icons.timer_outlined),
-                          _buildNavItem(2, 'NOTICES', Icons.campaign_outlined),
-                          _buildNavItem(3, 'MESSAGES', Icons.message_outlined),
-                          if (user.role == 'Admin') ...[
-                            _buildNavItem(4, 'STAFF', Icons.people_outline),
-                            _buildNavItem(
-                                5, 'ANALYTICS', Icons.analytics_outlined),
-                            _buildNavItem(
-                                6, 'SETTINGS', Icons.settings_outlined),
-                          ],
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: AppColors.brand,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'BRAANDINS',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
                         ],
                       ),
                     ),
 
-                    // User Profile Grid Block
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: AppColors.brand, width: 2),
+                    // Navigation
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ListView(
+                          children: [
+                            _buildNavItem(
+                                0, 'Dashboard', Icons.dashboard_rounded),
+                            _buildNavItem(1, 'Attendance', Icons.timer_rounded),
+                            _buildNavItem(2, 'Notices', Icons.campaign_rounded),
+                            _buildNavItem(3, 'Messages', Icons.message_rounded),
+                            if (user.role == 'Admin') ...[
+                              const Padding(
+                                padding: EdgeInsets.only(
+                                    top: 24, bottom: 12, left: 16),
+                                child: Text(
+                                  'MANAGEMENT',
+                                  style: TextStyle(
+                                    color: Colors.white24,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ),
+                              _buildNavItem(
+                                  4, 'Employees', Icons.people_rounded),
+                              _buildNavItem(
+                                  5, 'Reports', Icons.analytics_rounded),
+                              _buildNavItem(
+                                  6, 'Settings', Icons.settings_rounded),
+                            ],
+                          ],
                         ),
+                      ),
+                    ),
+
+                    // User Info
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         children: [
                           Row(
                             children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.brand),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    user.name[0],
-                                    style: GoogleFonts.spaceMono(
-                                        color: AppColors.brand,
-                                        fontWeight: FontWeight.bold),
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppColors.brand,
+                                child: Text(
+                                  user.name[0],
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
                                   ),
                                 ),
                               ),
@@ -131,19 +154,20 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      user.name.toUpperCase(),
-                                      style: GoogleFonts.spaceGrotesk(
+                                      user.name,
+                                      style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 14,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
                                       user.role.toUpperCase(),
-                                      style: GoogleFonts.spaceMono(
-                                        color: AppColors.brand,
-                                        fontSize: 10,
+                                      style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
@@ -154,15 +178,18 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
                           const SizedBox(height: 16),
                           InkWell(
                             onTap: () => auth.logout(),
+                            borderRadius: BorderRadius.circular(8),
                             child: Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.redAccent),
+                                border: Border.all(
+                                    color: Colors.redAccent.withOpacity(0.5)),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Center(
                                 child: Text(
-                                  'TERMINATE SESSION',
+                                  'LOGOUT',
                                   style: GoogleFonts.spaceMono(
                                     color: Colors.redAccent,
                                     fontSize: 10,
@@ -179,67 +206,76 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
                 ),
               ),
 
-              // MAIN CONTENT CONTAINER
+              // MAIN CONTENT
               Expanded(
-                child: Column(
-                  children: [
-                    // Action Bar / Breadcrumbs
-                    Container(
-                      height: 60,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      decoration: const BoxDecoration(
-                        color: Colors.black,
-                        border: Border(
-                          bottom: BorderSide(color: AppColors.brand, width: 1),
-                        ),
-                      ),
-                      child: Row(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      // Header
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _getNavTitle(_currentNavIndex),
-                            style: GoogleFonts.spaceMono(
+                            _getNavTitle(_currentNavIndex).toUpperCase(),
+                            style: GoogleFonts.spaceGrotesk(
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              letterSpacing: 1,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 22,
                             ),
                           ),
                           Row(
                             children: [
                               Text(
-                                DateFormat('EEE, MMM d, yyyy')
-                                    .format(DateTime.now())
-                                    .toUpperCase(),
+                                DateFormat('EEEE, MMMM d')
+                                    .format(DateTime.now()),
                                 style: GoogleFonts.spaceMono(
-                                  color: AppColors.brand,
-                                  fontSize: 11,
+                                  color: Colors.white38,
+                                  fontSize: 12,
                                 ),
                               ),
                               const SizedBox(width: 24),
                               Consumer<ThemeProvider>(
-                                builder: (context, theme, _) => IconButton(
-                                  icon: Icon(
-                                    theme.isDarkMode
-                                        ? Icons.light_mode
-                                        : Icons.dark_mode,
-                                    color: Colors.white,
-                                    size: 18,
+                                builder: (context, theme, _) => InkWell(
+                                  onTap: theme.toggleTheme,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      theme.isDarkMode
+                                          ? Icons.light_mode
+                                          : Icons.dark_mode,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
-                                  onPressed: theme.toggleTheme,
                                 ),
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 32),
 
-                    // View Content
-                    Expanded(
-                      child: _buildBody(user),
-                    ),
-                  ],
+                      // Canvas
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0A0A0A),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                                color: const Color(0xFF1A1A1A), width: 1),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: _buildBody(user),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -251,43 +287,37 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
 
   Widget _buildNavItem(int index, String label, IconData icon) {
     bool isActive = _currentNavIndex == index;
-    return InkWell(
-      onTap: () => setState(() => _currentNavIndex = index),
-      child: Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.brand : Colors.transparent,
-          border: const Border(
-            bottom: BorderSide(color: AppColors.brand, width: 1),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () => setState(() => _currentNavIndex = index),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 50,
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.brand : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isActive ? Colors.black : Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: GoogleFonts.spaceMono(
-                color: isActive ? Colors.black : Colors.white,
-                fontWeight: isActive ? FontWeight.w900 : FontWeight.normal,
-                fontSize: 12,
-                letterSpacing: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isActive ? Colors.black : Colors.white60,
+                size: 20,
               ),
-            ),
-            if (isActive) ...[
-              const Spacer(),
-              Container(
-                width: 8,
-                height: 8,
-                color: Colors.black,
+              const SizedBox(width: 16),
+              Text(
+                label,
+                style: GoogleFonts.spaceGrotesk(
+                  color: isActive ? Colors.black : Colors.white60,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 14,
+                ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );

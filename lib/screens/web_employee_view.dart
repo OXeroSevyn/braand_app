@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +12,6 @@ import '../models/attendance_record.dart';
 import '../services/supabase_service.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/neo_card.dart';
-import '../widgets/neo_button.dart';
 import 'attendance_screen.dart';
 import '../widgets/location_status_widget.dart';
 import 'messages_screen.dart';
@@ -38,7 +36,6 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
   Timer? _refreshTimer;
   Timer? _unreadCheckTimer;
   List<AttendanceRecord> _records = [];
-  String _status = 'IDLE';
   AttendanceType? _loadingType;
 
   @override
@@ -95,31 +92,10 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
       if (mounted) {
         setState(() {
           _records = userRecords;
-          _determineStatus(userRecords);
         });
       }
     } catch (e) {
       debugPrint('Error loading employee data: $e');
-    }
-  }
-
-  void _determineStatus(List<AttendanceRecord> records) {
-    if (records.isEmpty) {
-      _status = 'IDLE';
-      return;
-    }
-    final latest = records.first;
-    switch (latest.type) {
-      case AttendanceType.CLOCK_IN:
-      case AttendanceType.BREAK_END:
-        _status = 'ACTIVE';
-        break;
-      case AttendanceType.BREAK_START:
-        _status = 'ON_BREAK';
-        break;
-      case AttendanceType.CLOCK_OUT:
-        _status = 'COMPLETED';
-        break;
     }
   }
 
@@ -259,9 +235,7 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
           const SizedBox(height: 24),
           _buildActions(isDark),
           const SizedBox(height: 24),
-          _buildCharts(isDark),
-          const SizedBox(height: 24),
-          _buildRecentLogs(isDark),
+          _buildHistoryCard(),
         ],
       ),
     );
@@ -311,216 +285,158 @@ class _WebEmployeeViewState extends State<WebEmployeeView> {
   }
 
   Widget _buildActions(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'ACTIONS',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            LocationStatusWidget(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 24,
+          mainAxisSpacing: 24,
+          childAspectRatio: 2.0,
+          children: [
+            _buildActionButton(
+              'CLOCK IN',
+              Icons.login_rounded,
+              AppColors.brand,
+              () => _handleAttendance(AttendanceType.CLOCK_IN),
+              _loadingType == AttendanceType.CLOCK_IN,
+            ),
+            _buildActionButton(
+              'TAKE BREAK',
+              Icons.coffee_rounded,
+              Colors.orange,
+              () => _handleAttendance(AttendanceType.BREAK_START),
+              _loadingType == AttendanceType.BREAK_START,
+            ),
+            _buildActionButton(
+              'GO TO OFFICE',
+              Icons.business_rounded,
+              Colors.blue,
+              () => _handleAttendance(AttendanceType.CLOCK_IN),
+              false,
+            ),
+            _buildActionButton(
+              'CLOCK OUT',
+              Icons.logout_rounded,
+              Colors.redAccent,
+              () => _handleAttendance(AttendanceType.CLOCK_OUT),
+              _loadingType == AttendanceType.CLOCK_OUT,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, Color color,
+      VoidCallback onTap, bool isLoading) {
     return NeoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'ACTIONS',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              if (isLoading)
+                const CircularProgressIndicator(
+                    color: AppColors.brand, strokeWidth: 3)
+              else ...[
+                Icon(icon, color: color, size: 32),
+                const SizedBox(height: 16),
+                Text(
+                  label,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
-              LocationStatusWidget(),
+              ],
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: NeoButton(
-                  text: 'CLOCK IN',
-                  onPressed: _status == 'IDLE' || _status == 'COMPLETED'
-                      ? () => _handleAttendance(AttendanceType.CLOCK_IN)
-                      : null,
-                  isLoading: _loadingType == AttendanceType.CLOCK_IN,
-                  icon: const Icon(Icons.login, color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: NeoButton(
-                  text: 'CLOCK OUT',
-                  onPressed: _status == 'ACTIVE' || _status == 'ON_BREAK'
-                      ? () => _handleAttendance(AttendanceType.CLOCK_OUT)
-                      : null,
-                  isLoading: _loadingType == AttendanceType.CLOCK_OUT,
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: NeoButton(
-                  text: 'BREAK START',
-                  onPressed: _status == 'ACTIVE'
-                      ? () => _handleAttendance(AttendanceType.BREAK_START)
-                      : null,
-                  isLoading: _loadingType == AttendanceType.BREAK_START,
-                  icon: const Icon(Icons.coffee, color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: NeoButton(
-                  text: 'BREAK END',
-                  onPressed: _status == 'ON_BREAK'
-                      ? () => _handleAttendance(AttendanceType.BREAK_END)
-                      : null,
-                  isLoading: _loadingType == AttendanceType.BREAK_END,
-                  icon: const Icon(Icons.work, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCharts(bool isDark) {
+  Widget _buildHistoryCard() {
     return NeoCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'WEEKLY ACTIVITY',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 12,
-                barTouchData: BarTouchData(enabled: false),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          [
-                            'M',
-                            'T',
-                            'W',
-                            'T',
-                            'F',
-                            'S',
-                            'S'
-                          ][value.toInt() % 7],
-                          style: GoogleFonts.spaceMono(fontSize: 12),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(7, (index) {
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: (index + 2).toDouble(),
-                        color: AppColors.brand,
-                        width: 20,
-                      ),
-                    ],
-                  );
-                }),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'MY RECENT LOGS',
+              style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: Colors.white,
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentLogs(bool isDark) {
-    return NeoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'RECENT LOGS',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          const Divider(color: Color(0xFF1A1A1A), height: 1),
+          Expanded(
+            child: _records.isEmpty
+                ? const Center(
+                    child: Text('NO RECENT ACTIVITY',
+                        style: TextStyle(color: Colors.white24, fontSize: 11)))
+                : ListView.separated(
+                    itemCount: _records.take(15).length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(color: Color(0xFF1A1A1A), height: 1),
+                    itemBuilder: (context, index) {
+                      final record = _records[index];
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 4),
+                        title: Text(
+                            record.type
+                                .toString()
+                                .split('.')
+                                .last
+                                .replaceAll('_', ' '),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          DateFormat('MMM d, HH:mm').format(
+                            DateTime.fromMillisecondsSinceEpoch(
+                                record.timestamp),
+                          ),
+                          style: const TextStyle(
+                              color: Colors.white30, fontSize: 10),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded,
+                            color: Colors.white10, size: 16),
+                      );
+                    },
+                  ),
           ),
-          const SizedBox(height: 16),
-          if (_records.isEmpty)
-            const Center(child: Text('No activity yet'))
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _records.take(5).length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final record = _records[index];
-                return ListTile(
-                  leading: Icon(_getActivityIcon(record.type)),
-                  title: Text(
-                    _getActivityText(record.type),
-                    style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold),
-                  ),
-                  trailing: Text(
-                    DateFormat('MMM d, HH:mm').format(
-                      DateTime.fromMillisecondsSinceEpoch(record.timestamp),
-                    ),
-                    style: GoogleFonts.spaceMono(fontSize: 12),
-                  ),
-                );
-              },
-            ),
         ],
       ),
     );
-  }
-
-  IconData _getActivityIcon(AttendanceType type) {
-    switch (type) {
-      case AttendanceType.CLOCK_IN:
-        return Icons.login;
-      case AttendanceType.CLOCK_OUT:
-        return Icons.logout;
-      case AttendanceType.BREAK_START:
-        return Icons.pause;
-      case AttendanceType.BREAK_END:
-        return Icons.play_arrow;
-    }
-  }
-
-  String _getActivityText(AttendanceType type) {
-    switch (type) {
-      case AttendanceType.CLOCK_IN:
-        return 'Clocked in';
-      case AttendanceType.CLOCK_OUT:
-        return 'Clocked out';
-      case AttendanceType.BREAK_START:
-        return 'Started break';
-      case AttendanceType.BREAK_END:
-        return 'Ended break';
-    }
   }
 }

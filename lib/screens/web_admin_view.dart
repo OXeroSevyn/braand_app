@@ -12,9 +12,6 @@ import '../providers/theme_provider.dart';
 import '../widgets/neo_card.dart';
 import 'attendance_screen.dart';
 import 'messages_screen.dart';
-import 'notification_settings_screen.dart';
-import 'office_locations_screen.dart';
-import 'office_hours_settings_screen.dart';
 import 'reports_screen.dart';
 import 'admin_tasks_screen.dart';
 import 'profile_screen.dart';
@@ -80,7 +77,6 @@ class _WebAdminViewState extends State<WebAdminView> {
           debugPrint('Error checking unread count: $e');
         }
       } else if (mounted && _currentIndex == 6) {
-        // Index shifted to 6 due to NoticeBoard
         if (_unreadCount > 0) {
           setState(() {
             _unreadCount = 0;
@@ -106,128 +102,6 @@ class _WebAdminViewState extends State<WebAdminView> {
     }
   }
 
-  String _getEmployeeStatus(String userId) {
-    try {
-      final lastRecord = _recentActivity.firstWhere((r) => r.userId == userId);
-      switch (lastRecord.type) {
-        case AttendanceType.CLOCK_IN:
-        case AttendanceType.BREAK_END:
-          return 'ONLINE';
-        case AttendanceType.BREAK_START:
-          return 'ON BREAK';
-        case AttendanceType.CLOCK_OUT:
-          return 'OFFLINE';
-      }
-    } catch (e) {
-      return 'OFFLINE';
-    }
-  }
-
-  void _showMobileMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(
-              color: isDark ? Colors.white24 : Colors.black12,
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading:
-                    const Icon(Icons.manage_accounts, color: AppColors.brand),
-                title: Text(
-                  'User Management',
-                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const UserManagementScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading:
-                    const Icon(Icons.account_circle, color: AppColors.brand),
-                title: Text(
-                  'Profile',
-                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  final currentUser =
-                      Provider.of<AuthProvider>(context, listen: false).user;
-                  if (currentUser != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProfileScreen(user: currentUser),
-                      ),
-                    );
-                  }
-                },
-              ),
-              Consumer<ThemeProvider>(
-                builder: (context, theme, _) => ListTile(
-                  leading: Icon(
-                    theme.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                    color: AppColors.brand,
-                  ),
-                  title: Text(
-                    theme.isDarkMode ? 'Light Mode' : 'Dark Mode',
-                    style:
-                        GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-                  ),
-                  onTap: () {
-                    theme.toggleTheme();
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: Text(
-                  'Logout',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Provider.of<AuthProvider>(context, listen: false).logout();
-                },
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -247,187 +121,31 @@ class _WebAdminViewState extends State<WebAdminView> {
       MessagesScreen(user: user, isAdminView: true),
     ];
 
-    // Return the specific screen directly since WebDashboardScreen handles the shell
     return screens[_currentIndex.clamp(0, screens.length - 1)];
   }
 
   Widget _buildDashboard(bool isDark) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(isDark),
-          const SizedBox(height: 24),
-          _buildStats(isDark),
-          const SizedBox(height: 24),
-          _buildEmployeeTable(isDark),
-          const SizedBox(height: 24),
-          _buildRecentActivity(isDark),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(bool isDark) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'GLOBAL OPS',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              'Admin Dashboard',
-              style: GoogleFonts.spaceMono(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const OfficeLocationsScreen()),
-              ),
-              icon: const Icon(Icons.location_on),
-              tooltip: 'Office Locations',
-            ),
-            IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const OfficeHoursSettingsScreen()),
-              ),
-              icon: const Icon(Icons.access_time),
-              tooltip: 'Office Hours',
-            ),
-            IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const NotificationSettingsScreen()),
-              ),
-              icon: const Icon(Icons.notifications),
-              tooltip: 'Notification Settings',
-            ),
-            IconButton(
-              onPressed: () {
-                final currentUser =
-                    Provider.of<AuthProvider>(context, listen: false).user;
-                if (currentUser != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileScreen(user: currentUser),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.account_circle),
-              tooltip: 'Profile',
-            ),
-            IconButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UserManagementScreen()),
-              ),
-              icon: const Icon(Icons.manage_accounts),
-              tooltip: 'Manage Users',
-            ),
-            if (MediaQuery.of(context).size.width < 800)
-              IconButton(
-                onPressed: _showMobileMenu,
-                icon: const Icon(Icons.menu),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStats(bool isDark) {
-    int totalStaff = _employees.length;
-    int onlineCount =
-        _employees.where((e) => _getEmployeeStatus(e.id) == 'ONLINE').length;
-    int onBreakCount =
-        _employees.where((e) => _getEmployeeStatus(e.id) == 'ON BREAK').length;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-              'TOTAL STAFF', totalStaff.toString(), Icons.people, isDark),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatCard(
-              'ONLINE NOW', onlineCount.toString(), Icons.bolt, isDark,
-              isHighlight: true),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStatCard(
-              'ON BREAK', onBreakCount.toString(), Icons.coffee, isDark),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, IconData icon, bool isDark,
-      {bool isHighlight = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isHighlight
-            ? AppColors.brand
-            : (isDark ? AppColors.darkSurface : Colors.white),
-        border: Border.all(
-          color: isDark ? Colors.white : Colors.black,
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black : Colors.black,
-            offset: const Offset(6, 6),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(icon, color: isHighlight ? Colors.white : null),
-              Text(
-                value,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: isHighlight ? Colors.white : null,
+          _buildStatsGrid(),
+          const SizedBox(height: 32),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildEmployeesCard(),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: GoogleFonts.spaceMono(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-              color: isHighlight ? Colors.white : Colors.grey,
+                const SizedBox(width: 32),
+                Expanded(
+                  flex: 2,
+                  child: _buildRecentActivityCard(),
+                ),
+              ],
             ),
           ),
         ],
@@ -435,167 +153,243 @@ class _WebAdminViewState extends State<WebAdminView> {
     );
   }
 
-  Widget _buildEmployeeTable(bool isDark) {
+  Widget _buildStatsGrid() {
+    return Row(
+      children: [
+        _buildStatCard(
+            'Active Now',
+            _employees.where((e) => e.status == 'IN').length.toString(),
+            Icons.people,
+            Colors.blue),
+        const SizedBox(width: 24),
+        _buildStatCard(
+            'On Break',
+            _employees.where((e) => e.status == 'BREAK').length.toString(),
+            Icons.coffee,
+            Colors.orange),
+        const SizedBox(width: 24),
+        _buildStatCard(
+            'Absent',
+            _employees
+                .where((e) => e.status == 'OUT' || e.status == 'IDLE')
+                .length
+                .toString(),
+            Icons.person_off,
+            Colors.red),
+        const SizedBox(width: 24),
+        _buildStatCard('Unread', _unreadCount.toString(),
+            Icons.mark_email_unread, AppColors.brand),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: NeoCard(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 20),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmployeesCard() {
     return NeoCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'WORKFORCE STATUS',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'STAFF MONITOR',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _currentIndex = 4),
+                  child: const Text('VIEW ALL',
+                      style: TextStyle(color: AppColors.brand, fontSize: 12)),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          if (_employees.isEmpty)
-            const Center(child: Text('No employees found'))
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _employees.length,
-              separatorBuilder: (_, __) => const Divider(),
+          const Divider(color: Color(0xFF1A1A1A), height: 1),
+          Expanded(
+            child: ListView.separated(
+              itemCount: _employees.take(10).length,
+              separatorBuilder: (context, index) =>
+                  const Divider(color: Color(0xFF1A1A1A), height: 1),
               itemBuilder: (context, index) {
                 final emp = _employees[index];
-                final status = _getEmployeeStatus(emp.id);
                 return ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   leading: CircleAvatar(
-                    backgroundColor: AppColors.brand,
+                    backgroundColor: Colors.white.withOpacity(0.05),
+                    child: Text(emp.name[0],
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                  title: Text(emp.name,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                  subtitle: Text(emp.role,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
+                  trailing: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(emp.status).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: _getStatusColor(emp.status).withOpacity(0.3)),
+                    ),
                     child: Text(
-                      emp.name[0],
-                      style: const TextStyle(color: Colors.white),
+                      emp.status,
+                      style: TextStyle(
+                          color: _getStatusColor(emp.status),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
-                  title: Text(
-                    emp.name,
-                    style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(emp.department),
-                  trailing: _buildStatusBadge(status, isDark),
                 );
               },
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String status, bool isDark) {
-    Color color;
-    switch (status) {
-      case 'ONLINE':
-        color = AppColors.brand;
-        break;
-      case 'ON BREAK':
-        color = Colors.orange;
-        break;
-      default:
-        color = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color,
-        border:
-            Border.all(color: isDark ? Colors.white : Colors.black, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black : Colors.black,
-            offset: const Offset(2, 2),
           ),
         ],
       ),
-      child: Text(
-        status,
-        style: GoogleFonts.spaceMono(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
     );
   }
 
-  Widget _buildRecentActivity(bool isDark) {
+  Widget _buildRecentActivityCard() {
     return NeoCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'RECENT ACTIVITY',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'LIVE ACTIVITY',
+              style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: Colors.white,
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          if (_recentActivity.isEmpty)
-            const Center(child: Text('No activity yet'))
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _recentActivity.take(10).length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final record = _recentActivity[index];
-                final emp = _employees.firstWhere(
-                  (e) => e.id == record.userId,
-                  orElse: () => User(
-                    id: '',
-                    email: '',
-                    name: 'Unknown',
-                    role: '',
-                    department: '',
+          const Divider(color: Color(0xFF1A1A1A), height: 1),
+          Expanded(
+            child: _recentActivity.isEmpty
+                ? const Center(
+                    child: Text('NO RECENT DATA',
+                        style: TextStyle(color: Colors.white24, fontSize: 11)))
+                : ListView.separated(
+                    itemCount: _recentActivity.take(15).length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(color: Color(0xFF1A1A1A), height: 1),
+                    itemBuilder: (context, index) {
+                      final record = _recentActivity[index];
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 4),
+                        title: Text(
+                            _employees
+                                .firstWhere((e) => e.id == record.userId,
+                                    orElse: () => User(
+                                        id: '',
+                                        name: 'Unknown',
+                                        email: '',
+                                        role: '',
+                                        department: '',
+                                        status: ''))
+                                .name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          '${record.type.toString().split('.').last} at ${DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(record.timestamp))}',
+                          style: const TextStyle(
+                              color: Colors.white30, fontSize: 10),
+                        ),
+                        trailing: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.brand,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-
-                return ListTile(
-                  leading: Icon(_getActivityIcon(record.type)),
-                  title: Text(
-                    emp.name,
-                    style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(_getActivityText(record.type)),
-                  trailing: Text(
-                    DateFormat('HH:mm').format(
-                      DateTime.fromMillisecondsSinceEpoch(record.timestamp),
-                    ),
-                    style: GoogleFonts.spaceMono(fontSize: 12),
-                  ),
-                );
-              },
-            ),
+          ),
         ],
       ),
     );
   }
 
-  IconData _getActivityIcon(AttendanceType type) {
-    switch (type) {
-      case AttendanceType.CLOCK_IN:
-        return Icons.login;
-      case AttendanceType.CLOCK_OUT:
-        return Icons.logout;
-      case AttendanceType.BREAK_START:
-        return Icons.pause;
-      case AttendanceType.BREAK_END:
-        return Icons.play_arrow;
-    }
-  }
-
-  String _getActivityText(AttendanceType type) {
-    switch (type) {
-      case AttendanceType.CLOCK_IN:
-        return 'Clocked in';
-      case AttendanceType.CLOCK_OUT:
-        return 'Clocked out';
-      case AttendanceType.BREAK_START:
-        return 'Started break';
-      case AttendanceType.BREAK_END:
-        return 'Ended break';
+  Color _getStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'IN':
+      case 'ONLINE':
+      case 'ACTIVE':
+        return AppColors.brand;
+      case 'BREAK':
+      case 'ON BREAK':
+        return Colors.orange;
+      case 'OUT':
+      case 'OFFLINE':
+      case 'IDLE':
+        return Colors.redAccent;
+      default:
+        return Colors.grey;
     }
   }
 }
