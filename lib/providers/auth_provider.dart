@@ -130,6 +130,9 @@ class AuthProvider with ChangeNotifier {
       // Start listening for custom notifications
       NotificationService().listenForCustomNotifications(_user!.id);
 
+      // Save FCM Token
+      await _saveFcmToken();
+
       debugPrint(
           '✅ User profile set: ${_user?.name} | Status: ${_user?.status}');
     } on supabase.AuthException catch (e) {
