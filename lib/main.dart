@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -62,18 +63,21 @@ void main() async {
   debugPrint('✅ Auto sign-out service started');
 
   // Initialize notification service (runs on both mobile and web now)
-  try {
-    debugPrint('🔔 Initializing notification service...');
-    final notificationService = NotificationService();
-    notificationService.initialize();
+  // We don't await this to prevent web startup hangs
+  unawaited(() async {
+    try {
+      debugPrint('🔔 Initializing notification service...');
+      final notificationService = NotificationService();
+      await notificationService.initialize();
 
-    debugPrint('📱 Requesting notification permissions...');
-    final permissionGranted = await notificationService.requestPermissions();
-    debugPrint('  Permission granted: $permissionGranted');
-  } catch (e, stackTrace) {
-    debugPrint('❌ Error initializing notifications: $e');
-    debugPrint('Stack trace: $stackTrace');
-  }
+      debugPrint('📱 Requesting notification permissions...');
+      final permissionGranted = await notificationService.requestPermissions();
+      debugPrint('  Permission granted: $permissionGranted');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error initializing notifications: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
+  }());
 
   // Request all permissions (Mobile only helper)
   if (!kIsWeb) {
