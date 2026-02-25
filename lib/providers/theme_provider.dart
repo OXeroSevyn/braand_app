@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 
 class ThemeProvider with ChangeNotifier {
   bool _isDarkMode = true;
-  bool _isSnowfallEnabled = true;
+  bool _isSnowfallEnabled = !kIsWeb;
   final StorageService _storageService = StorageService();
 
   bool get isDarkMode => _isDarkMode;

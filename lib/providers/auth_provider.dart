@@ -123,15 +123,15 @@ class AuthProvider with ChangeNotifier {
 
       await _storageService.saveUser(_user!); // Keep local copy if needed
 
-      // Schedule notifications for the authenticated user
+      // Schedule notifications for the authenticated user (non-blocking)
       debugPrint('Scheduling notifications for user: ${_user!.name}');
-      await NotificationService().loadAndScheduleNotifications();
+      NotificationService().loadAndScheduleNotifications();
 
       // Start listening for custom notifications
       NotificationService().listenForCustomNotifications(_user!.id);
 
-      // Save FCM Token
-      await _saveFcmToken();
+      // Save FCM Token (non-blocking)
+      _saveFcmToken();
 
       debugPrint(
           '✅ User profile set: ${_user?.name} | Status: ${_user?.status}');

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -46,12 +47,13 @@ class _SeasonalOverlayState extends State<SeasonalOverlay>
     if (_size == null) return;
 
     // Determine particle limit and generation rate based on season
-    int limit = 100;
-    double generationRate = 0.1;
+    bool isWeb = kIsWeb; // I need to import foundation here too
+    int limit = isWeb ? 40 : 100;
+    double generationRate = isWeb ? 0.05 : 0.1;
 
     if (_currentSeason == Season.summer) {
-      limit = 40; // Fewer fireflies
-      generationRate = 0.02;
+      limit = isWeb ? 20 : 40; // Fewer fireflies
+      generationRate = isWeb ? 0.01 : 0.02;
     }
 
     // Generate particles

@@ -65,7 +65,7 @@ void main() async {
   try {
     debugPrint('🔔 Initializing notification service...');
     final notificationService = NotificationService();
-    await notificationService.initialize();
+    notificationService.initialize();
 
     debugPrint('📱 Requesting notification permissions...');
     final permissionGranted = await notificationService.requestPermissions();
