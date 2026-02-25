@@ -114,8 +114,9 @@ class AttendanceService {
 
             await deviceService.updateLastUsed(userId);
             return { success: true };
-        } catch (error: any) {
-            return { success: false, error: error.message || 'Failed to log attendance' };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to log attendance';
+            return { success: false, error: message };
         }
     }
 

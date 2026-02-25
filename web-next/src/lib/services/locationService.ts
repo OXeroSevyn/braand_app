@@ -105,8 +105,9 @@ class LocationService {
             }
 
             return { isInRange: false, distanceToNearest: 0, message: 'No office found' };
-        } catch (error: any) {
-            return { isInRange: false, distanceToNearest: 0, message: error.message || 'Error checking location' };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Error checking location';
+            return { isInRange: false, distanceToNearest: 0, message };
         }
     }
 }

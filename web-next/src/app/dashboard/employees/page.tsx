@@ -1,7 +1,7 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Users, Search, Filter } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 
 export default function EmployeesPage() {
     return (
@@ -26,8 +26,8 @@ export default function EmployeesPage() {
                     { name: "Ankush Sharma", dept: "Video editor", role: "Senior" },
                     { name: "Soumik Mallick", dept: "Design", role: "Lead" },
                     { name: "laksh verma", dept: "Design", role: "Junior" }
-                ].map((emp, i) => (
-                    <GlassCard key={i} className="bg-dark-grey border-black group">
+                ].map((emp) => (
+                    <GlassCard key={emp.name} className="bg-dark-grey border-black group">
                         <div className="flex items-center gap-6">
                             <div className="w-20 h-20 rounded-full border-4 border-neon-green bg-black flex items-center justify-center text-3xl font-black text-neon-green group-hover:bg-neon-green group-hover:text-black transition-colors">
                                 {emp.name.charAt(0)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
-import { MessageSquare, Users, Bell, CheckSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 
 export default function MessagesPage() {
     return (

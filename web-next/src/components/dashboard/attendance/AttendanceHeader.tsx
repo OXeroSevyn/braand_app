@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 interface AttendanceHeaderProps {
     readonly isClockedIn: boolean;
-    readonly clockInTime: Date | null;
     readonly isOnBreak: boolean;
     readonly onClockToggle: () => void;
     readonly onBreakToggle: () => void;
@@ -18,7 +17,6 @@ interface AttendanceHeaderProps {
 
 export function AttendanceHeader({
     isClockedIn,
-    clockInTime,
     isOnBreak,
     onClockToggle,
     onBreakToggle,
@@ -27,16 +25,16 @@ export function AttendanceHeader({
     const [locStatus, setLocStatus] = useState<LocationStatus | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
 
+    const checkLocation = async () => {
+        const status = await locationService.checkLocationStatus();
+        setLocStatus(status);
+    };
+
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         checkLocation();
         return () => clearInterval(timer);
     }, []);
-
-    const checkLocation = async () => {
-        const status = await locationService.checkLocationStatus();
-        setLocStatus(status);
-    };
 
     const formattedTime = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const formattedDate = currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
@@ -103,7 +101,7 @@ export function AttendanceHeader({
                                 {statusText}
                             </span>
                             <p className="text-white/60 font-bold text-sm uppercase tracking-tight">
-                                {formattedTime} <span className="text-white/20 px-1">//</span> {formattedDate}
+                                {formattedTime} <span className="text-white/20 px-1">{"//"}</span> {formattedDate}
                             </p>
                         </div>
                     </div>

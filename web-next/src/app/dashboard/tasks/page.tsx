@@ -1,7 +1,7 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
-import { CheckSquare, Plus, Clock } from "lucide-react";
+import { CheckSquare, Clock } from "lucide-react";
 
 export default function TasksPage() {
     return (

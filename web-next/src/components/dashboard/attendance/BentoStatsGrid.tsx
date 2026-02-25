@@ -6,7 +6,7 @@ import { AttendanceStats } from "../../../lib/services/attendanceService";
 const StatItem = ({ title, value, icon: Icon, colorClass, delay }: {
     readonly title: string;
     readonly value: string | number;
-    readonly icon: any;
+    readonly icon: React.ComponentType<{ className?: string }>;
     readonly colorClass: string;
     readonly delay: number;
 }) => (
