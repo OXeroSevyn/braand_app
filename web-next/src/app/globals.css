@@ -2,48 +2,48 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --aura-color-1: #4f46e5;
-  --aura-color-2: #ec4899;
-  --aura-color-3: #8b5cf6;
+  --foreground: #000000;
+  --neon-green: #39FF14;
+  --pure-black: #000000;
+  --pure-white: #ffffff;
+  --brutal-shadow: 8px 8px 0px 0px #000000;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-neon-green: var(--neon-green);
+  --color-pure-black: var(--pure-black);
+  --color-pure-white: var(--pure-white);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  
-  /* Custom aura colors */
-  --color-aura-1: var(--aura-color-1);
-  --color-aura-2: var(--aura-color-2);
-  --color-aura-3: var(--aura-color-3);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #050505;
-    --foreground: #ffffff;
-  }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .brutal-border {
+    border: 3px solid black;
   }
-  
+
+  .brutal-shadow {
+    box-shadow: var(--brutal-shadow);
+  }
+
   .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
+    @apply bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0, 0, 0, 1)] transition-all;
   }
-  
-  .dark .glass {
-    @apply bg-black/20 backdrop-blur-md border border-white/10;
+
+  .glass:hover {
+    @apply translate-x-[-2px] translate-y-[-2px] shadow-[10px_10px_0px_0px_rgba(0, 0, 0, 1)];
   }
 }

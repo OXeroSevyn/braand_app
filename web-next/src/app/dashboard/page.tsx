@@ -1,7 +1,6 @@
 "use client";
 
 import { GlassCard } from "@/components/ui/GlassCard";
-import { AuraBackground } from "@/components/ui/AuraBackground";
 import { useAuth } from "@/context/AuthContext";
 import { taskService, Task } from "@/lib/services";
 import { motion } from "framer-motion";
@@ -11,10 +10,12 @@ import {
     Search,
     LogOut,
     CheckCircle2,
-    Circle
+    Circle,
+    BellOff
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function DashboardPage() {
     const { user, signOut } = useAuth();
@@ -53,16 +54,14 @@ export default function DashboardPage() {
     const completionRate = tasks.length > 0 ? (completedCount / tasks.length) * 100 : 0;
 
     return (
-        <div className="min-h-screen p-6 md:p-12 text-foreground font-sans selection:bg-aura-1/30">
-            <AuraBackground />
-
+        <div className="min-h-screen p-6 md:p-12 text-black font-sans selection:bg-neon-green/30">
             {/* Navigation Bar */}
-            <nav className="flex items-center justify-between mb-16 animate-in fade-in slide-in-from-top-4 duration-1000">
+            <nav className="flex items-center justify-between mb-16 border-b-8 border-black pb-8">
                 <div className="flex items-center gap-8">
                     <h2 className="text-2xl font-black tracking-tighter uppercase">Braand</h2>
                     <div className="hidden md:flex items-center gap-6 text-sm font-medium text-foreground/40">
-                        <button className="text-foreground transition-colors">Overview</button>
-                        <button className="hover:text-foreground transition-colors">Articles</button>
+                        <Link href="/dashboard" className="text-foreground transition-colors">Overview</Link>
+                        <Link href="/dashboard/attendance" className="hover:text-foreground transition-colors">Attendance</Link>
                         <button className="hover:text-foreground transition-colors">Analytics</button>
                         <button className="hover:text-foreground transition-colors">Settings</button>
                     </div>
@@ -97,20 +96,20 @@ export default function DashboardPage() {
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto">
-                <header className="mb-12 space-y-2">
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Bonjour, {user?.name?.split(' ')[0]}</h1>
-                    <p className="text-lg text-foreground/40 font-light">Here&apos;s what&apos;s happening today in your workspace.</p>
+                <header className="mb-12 space-y-2 border-l-8 border-black pl-8 bg-neon-green/10 py-4">
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase">HELL-O, {user?.name?.split(' ')[0]}</h1>
+                    <p className="text-xl text-black font-bold uppercase italic">Today&apos;s workspace mission status.</p>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 grid-rows-2 gap-6 h-auto md:h-[600px]">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                     {/* Work Progress Card */}
-                    <GlassCard className="md:col-span-2 md:row-span-2 flex flex-col justify-between" delay={0.1}>
+                    <GlassCard className="md:col-span-2 flex flex-col justify-between bg-white" delay={0.1}>
                         <div>
-                            <span className="text-[10px] uppercase tracking-widest text-aura-2 font-bold mb-4 block">Daily Performance</span>
-                            <h3 className="text-4xl font-bold mb-2">Work Progress</h3>
-                            <p className="text-foreground/40 text-sm max-w-xs">
-                                You have completed {completedCount} out of {tasks.length} tasks today.
-                                {completionRate === 100 ? " Perfect score!" : " Keep going!"}
+                            <span className="text-[12px] uppercase tracking-widest text-black font-black mb-4 block bg-neon-green inline-block px-2">Performance</span>
+                            <h3 className="text-5xl font-black mb-2 uppercase tracking-tighter italic">Mission Progress</h3>
+                            <p className="text-black font-bold text-sm max-w-xs">
+                                Completed {completedCount}/{tasks.length} objectives.
+                                {completionRate === 100 ? " MISSION COMPLETE." : " KEEP PUSHING."}
                             </p>
                         </div>
 
@@ -176,9 +175,9 @@ export default function DashboardPage() {
                     </GlassCard>
 
                     <GlassCard className="bg-aura-1/5 border-aura-1/20" delay={0.4}>
-                        <h3 className="text-xl font-bold mb-1">Articles</h3>
-                        <p className="text-3xl font-black mt-2">12</p>
-                        <span className="text-xs text-aura-1 font-bold">Trending this week</span>
+                        <h3 className="text-xl font-bold mb-1">Messages</h3>
+                        <p className="text-3xl font-black mt-2">5</p>
+                        <span className="text-xs text-aura-1 font-bold">Unread notifications</span>
                     </GlassCard>
                 </div>
             </main>
