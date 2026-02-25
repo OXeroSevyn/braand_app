@@ -1,149 +1,134 @@
 "use client";
 
-import { GlassCard } from "@/components/ui/GlassCard";
-import { useAuth } from "@/context/AuthContext";
-import { taskService, Task } from "@/lib/services";
-import { motion } from "framer-motion";
+import { GlassCard as M3Card } from "@/components/ui/GlassCard";
 import {
-    MapPin,
-    MapPin,
-    Clock,
     Zap,
     Coffee,
-    User,
     Settings,
-    Users
+    Users,
+    Bell,
+    ArrowUpRight,
+    Search
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
-import Image from "next/image";
-import Link from "next/link";
 
 export default function DashboardPage() {
-    const { user, signOut } = useAuth();
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    const loadData = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            const userTasks = await taskService.getUserTasks(user.id);
-            setTasks(userTasks);
-        } catch (err) {
-            console.error("Failed to load dashboard data", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [user]);
-
-    useEffect(() => {
-        if (user) {
-            loadData();
-        }
-    }, [user, loadData]);
-
-    const toggleTask = async (taskId: string, currentStatus: boolean) => {
-        try {
-            await taskService.toggleTask(taskId, !currentStatus);
-            setTasks(tasks.map(t => t.id === taskId ? { ...t, is_completed: !currentStatus } : t));
-        } catch (err) {
-            console.error("Failed to update task", err);
-        }
-    };
-
-    const completedCount = tasks.filter(t => t.is_completed).length;
-    const completionRate = tasks.length > 0 ? (completedCount / tasks.length) * 100 : 0;
-
     return (
-        <div className="min-h-screen p-6 lg:p-10 bg-background">
-            {/* Header Section */}
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-                <div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase text-white">
-                        GLOBAL <span className="text-neon-green">OPS</span>
-                    </h1>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.3em]">Admin Dashboard</p>
+        <div className="min-h-screen pr-8 py-8 bg-background text-foreground transition-all duration-500">
+            {/* Top Bar / Search */}
+            <div className="flex items-center justify-between mb-10 px-4">
+                <div className="relative group flex-1 max-w-md">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant transition-colors group-focus-within:text-primary" />
+                    <input
+                        type="text"
+                        placeholder="Search operations..."
+                        className="w-full h-12 pl-12 pr-4 bg-surface-container rounded-full border border-white/5 focus:outline-none focus:border-primary/50 text-sm transition-all"
+                    />
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button className="p-2 text-white/60 hover:text-neon-green transition-colors"><MapPin className="w-5 h-5" /></button>
-                    <button className="p-2 text-white/60 hover:text-neon-green transition-colors"><Clock className="w-5 h-5" /></button>
-                    <button className="p-2 text-white/60 hover:text-neon-green transition-colors"><Bell className="w-5 h-5" /></button>
-                    <button className="p-2 text-white/60 hover:text-neon-green transition-colors"><User className="w-5 h-5" /></button>
-                    <button className="p-2 text-white/60 hover:text-neon-green transition-colors"><Settings className="w-5 h-5" /></button>
+                <div className="flex items-center gap-2">
+                    {[Bell, Settings].map((Icon, i) => (
+                        <button key={i} className="w-12 h-12 rounded-full flex items-center justify-center hover:bg-surface-variant transition-all text-on-surface-variant hover:text-white">
+                            <Icon className="w-5 h-5" />
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Header Section */}
+            <header className="mb-12 px-4">
+                <div className="flex flex-col gap-1">
+                    <p className="text-xs font-bold text-primary uppercase tracking-[0.3em]">Command Center</p>
+                    <h1 className="text-5xl font-black tracking-tight text-white leading-tight">
+                        OPERATIONAL <br />
+                        <span className="text-primary italic">INTELLIGENCE</span>
+                    </h1>
                 </div>
             </header>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <GlassCard className="bg-dark-grey border-black">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <Users className="w-5 h-5 text-white/40 mb-4" />
-                            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Total Staff</p>
+            {/* KPI Cards - M3 Elevated */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 px-2">
+                <M3Card variant="elevated" className="h-[220px] flex flex-col justify-between p-8 border-none bg-surface-container-high relative overflow-hidden group">
+                    <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
+                    <div className="flex justify-between items-start relative z-10">
+                        <div className="p-3 rounded-2xl bg-white/5">
+                            <Users className="w-6 h-6 text-white/40" />
                         </div>
-                        <p className="text-6xl font-black text-white tabular-nums">11</p>
+                        <ArrowUpRight className="w-5 h-5 text-white/20 group-hover:text-primary transition-colors" />
                     </div>
-                </GlassCard>
+                    <div>
+                        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Total Payroll</p>
+                        <p className="text-6xl font-black text-white">11</p>
+                    </div>
+                </M3Card>
 
-                <GlassCard className="bg-neon-green border-black">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <Zap className="w-5 h-5 text-black mb-4" />
-                            <p className="text-[8px] font-black text-black uppercase tracking-widest">Online Now</p>
+                <M3Card variant="elevated" className="h-[220px] flex flex-col justify-between p-8 border-none bg-primary text-black relative overflow-hidden group">
+                    <div className="absolute -right-4 -top-4 w-32 h-32 bg-black/5 rounded-full blur-3xl group-hover:bg-black/10 transition-all" />
+                    <div className="flex justify-between items-start relative z-10">
+                        <div className="p-3 rounded-2xl bg-black/10">
+                            <Zap className="w-6 h-6 text-black" />
                         </div>
-                        <p className="text-6xl font-black text-black tabular-nums">0</p>
+                        <ArrowUpRight className="w-5 h-5 text-black/40" />
                     </div>
-                </GlassCard>
+                    <div>
+                        <p className="text-xs font-bold text-black/60 uppercase tracking-widest mb-1">Deployed Now</p>
+                        <p className="text-6xl font-black text-black">0</p>
+                    </div>
+                </M3Card>
 
-                <GlassCard className="bg-dark-grey border-black">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <Coffee className="w-5 h-5 text-white/40 mb-4" />
-                            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">On Break</p>
+                <M3Card variant="elevated" className="h-[220px] flex flex-col justify-between p-8 border-none bg-surface-container-high relative overflow-hidden group">
+                    <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
+                    <div className="flex justify-between items-start relative z-10">
+                        <div className="p-3 rounded-2xl bg-white/5">
+                            <Coffee className="w-6 h-6 text-white/40" />
                         </div>
-                        <p className="text-6xl font-black text-white tabular-nums">0</p>
+                        <ArrowUpRight className="w-5 h-5 text-white/20 group-hover:text-primary transition-colors" />
                     </div>
-                </GlassCard>
+                    <div>
+                        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">In Rest Mode</p>
+                        <p className="text-6xl font-black text-white">0</p>
+                    </div>
+                </M3Card>
             </div>
 
-            {/* Workforce Status Section */}
-            <div className="space-y-6">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Workforce Status</h3>
-                    <div className="h-0.5 flex-1 bg-white/5 mx-6" />
+            {/* Personnel List - Tonal Cards */}
+            <div className="px-2">
+                <div className="flex items-center justify-between mb-8 px-2">
+                    <h3 className="text-lg font-bold text-white tracking-tight">Active Deployment</h3>
+                    <button className="text-xs font-bold text-primary uppercase tracking-widest hover:underline">View All</button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                     {[
-                        { name: "Mayank Aggarwal", dept: "Marketing", status: "OFFLINE" },
-                        { name: "Tester 01", dept: "Gaming", status: "OFFLINE" },
-                        { name: "Ankush Sharma", dept: "Video editor", status: "OFFLINE" },
-                        { name: "Soumik Mallick", dept: "Design", status: "OFFLINE" },
-                        { name: "laksh verma", dept: "Video editing & Designing", status: "OFFLINE" },
-                        { name: "Muskan Khatoon", dept: "Social Media Manager", status: "OFFLINE" }
-                    ].map((emp, i) => (
-                        <GlassCard key={i} className="py-4 bg-transparent border-t-2 border-x-0 border-b-0 border-white/5 shadow-none hover:bg-white/5 transition-colors rounded-none group/item">
-                            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                                <div className="flex items-center gap-4 w-full md:w-auto">
-                                    <div className="w-10 h-10 rounded-full bg-neon-green/20 border-2 border-neon-green flex items-center justify-center text-xs font-black text-neon-green group-hover/item:bg-neon-green group-hover/item:text-black transition-colors">
-                                        {emp.name.charAt(0)}
+                        { id: 1, name: "Mayank Aggarwal", dept: "Marketing", status: "Offline", initials: "MA" },
+                        { id: 2, name: "Tester 01", dept: "Gaming", status: "Offline", initials: "T1" },
+                        { id: 3, name: "Ankush Sharma", dept: "Video editor", status: "Offline", initials: "AS" },
+                        { id: 4, name: "Soumik Mallick", dept: "Design", status: "Offline", initials: "SM" },
+                    ].map((emp) => (
+                        <M3Card key={emp.id} variant="filled" className="px-6 py-4 border-none bg-surface-container/40 hover:bg-surface-container transition-all rounded-[24px]">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-surface-variant flex items-center justify-center text-sm font-bold text-white">
+                                        {emp.initials}
                                     </div>
                                     <div>
-                                        <p className="text-sm font-black text-white">{emp.name}</p>
-                                        <p className="text-[10px] font-bold text-white/40 uppercase">{emp.dept}</p>
+                                        <p className="text-base font-bold text-white">{emp.name}</p>
+                                        <p className="text-xs text-on-surface-variant">{emp.dept}</p>
                                     </div>
                                 </div>
-                                <div className="w-full md:w-auto flex justify-end">
-                                    <span className="px-3 py-1 border-2 border-black bg-dark-grey text-[8px] font-black text-white/40 uppercase tracking-widest">
+                                <div className="flex items-center gap-4">
+                                    <span className="px-4 py-1.5 rounded-full bg-white/5 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
                                         {emp.status}
                                     </span>
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5 text-on-surface-variant">
+                                        <ArrowUpRight className="w-4 h-4" />
+                                    </div>
                                 </div>
                             </div>
-                        </GlassCard>
+                        </M3Card>
                     ))}
                 </div>
             </div>
         </div>
     );
 }
+

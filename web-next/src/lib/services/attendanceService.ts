@@ -118,6 +118,14 @@ class AttendanceService {
             return { success: false, error: error.message || 'Failed to log attendance' };
         }
     }
+
+    async startBreak(userId: string) {
+        return this.logAttendance(userId, AttendanceType.BREAK_START);
+    }
+
+    async endBreak(userId: string) {
+        return this.logAttendance(userId, AttendanceType.BREAK_END);
+    }
 }
 
 export const attendanceService = new AttendanceService();

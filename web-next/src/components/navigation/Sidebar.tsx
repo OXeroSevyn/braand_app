@@ -1,15 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
     LayoutDashboard,
     Users,
     FileBarChart,
     LogOut,
-    Moon,
-    Sun,
-    Bell,
-    Settings
+    Clock
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,9 +13,10 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-    { name: "DASHBOARD", icon: LayoutDashboard, href: "/dashboard" },
-    { name: "TEAM", icon: Users, href: "/dashboard/employees" },
-    { name: "REPORTS", icon: FileBarChart, href: "/dashboard/reports" }
+    { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { name: "Attendance", icon: Clock, href: "/dashboard/attendance" },
+    { name: "Team", icon: Users, href: "/dashboard/employees" },
+    { name: "Reports", icon: FileBarChart, href: "/dashboard/reports" }
 ];
 
 export function Sidebar() {
@@ -27,29 +24,21 @@ export function Sidebar() {
     const { user, signOut } = useAuth();
 
     return (
-        <aside className="hidden lg:flex flex-col w-72 h-screen fixed left-0 top-0 bg-pure-black/50 border-r-2 border-black p-6 z-50">
-            {/* Logo */}
-            <div className="mb-12">
-                <h1 className="text-2xl font-black tracking-tighter text-white uppercase italic">
-                    BRAAND<span className="text-neon-green">INS.</span>
-                </h1>
-            </div>
-
-            {/* Profile Card */}
-            <div className="brutal-card p-4 mb-10 bg-dark-grey">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full border-4 border-neon-green bg-pure-black flex items-center justify-center text-xl font-black text-neon-green">
-                        {user?.name?.charAt(0) || "S"}
+        <aside className="hidden lg:flex flex-col w-[300px] h-[calc(100vh-2rem)] fixed left-4 top-4 bg-surface-container rounded-[28px] p-4 z-50 shadow-m3-1 border border-white/5">
+            {/* Header / Logo */}
+            <div className="mb-8 px-4 pt-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-sm bg-on-primary rotate-45" />
                     </div>
-                    <div>
-                        <p className="text-sm font-black text-white uppercase">{user?.name || "User"}</p>
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{user?.role || "Admin"} • {user?.department || "Faculty"}</p>
-                    </div>
+                    <h1 className="text-xl font-bold tracking-tight text-white uppercase italic">
+                        BRAAND<span className="text-primary italic">.</span>
+                    </h1>
                 </div>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 space-y-4">
+            {/* Navigation Drawer Items */}
+            <nav className="flex-1 space-y-1">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
@@ -57,33 +46,47 @@ export function Sidebar() {
                             key={item.name}
                             href={item.href}
                             className={cn(
-                                "flex items-center gap-4 p-4 font-black text-sm transition-all border-2 border-transparent",
+                                "group relative flex items-center gap-3 px-4 py-3 h-14 rounded-full transition-all overflow-hidden",
                                 isActive
-                                    ? "bg-neon-green text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                                    : "text-white/40 hover:text-white hover:bg-white/5"
+                                    ? "text-on-primary font-bold"
+                                    : "text-on-surface-variant hover:bg-white/5"
                             )}
                         >
-                            <item.icon className="w-5 h-5" />
-                            {item.name}
+                            {/* Active Indicator Pill */}
+                            {isActive && (
+                                <div className="absolute inset-0 bg-primary z-0" />
+                            )}
+
+                            <div className="relative z-10 flex items-center gap-3">
+                                <item.icon className={cn("w-5 h-5", isActive ? "text-on-primary" : "text-on-surface-variant")} />
+                                <span className="text-sm tracking-wide">{item.name}</span>
+                            </div>
                         </Link>
                     );
                 })}
             </nav>
 
-            {/* Footer Actions */}
-            <div className="space-y-4 pt-6 border-t border-white/5">
-                <button className="flex items-center gap-4 p-4 w-full font-black text-sm text-white/40 hover:text-white transition-all">
-                    <Moon className="w-5 h-5" />
-                    DARK MODE
-                </button>
+            {/* Profile & Footer Action */}
+            <div className="mt-auto space-y-4 pt-4 px-2">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-variant/50">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/20 flex items-center justify-center text-primary font-bold">
+                        {user?.name?.charAt(0) || "U"}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <p className="text-xs font-bold text-white truncate">{user?.name || "User"}</p>
+                        <p className="text-[10px] text-on-surface-variant uppercase tracking-tighter">{user?.role || "Admin"}</p>
+                    </div>
+                </div>
+
                 <button
                     onClick={() => signOut()}
-                    className="flex items-center gap-4 p-4 w-full font-black text-sm text-rose-500 hover:text-rose-400 transition-all border-2 border-transparent hover:border-black hover:bg-rose-500/10"
+                    className="flex items-center gap-3 w-full px-4 py-3 h-12 rounded-full text-on-surface-variant hover:bg-rose-500/10 hover:text-rose-400 transition-all group"
                 >
-                    <LogOut className="w-5 h-5" />
-                    LOGOUT
+                    <LogOut className="w-5 h-5 opacity-50 group-hover:opacity-100" />
+                    <span className="text-sm font-medium uppercase tracking-widest">Logout</span>
                 </button>
             </div>
         </aside>
     );
 }
+

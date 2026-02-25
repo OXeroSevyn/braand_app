@@ -31,9 +31,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ClientProviders>
-          <div className="flex">
+          <div className="flex bg-background min-h-screen">
             <Sidebar />
-            <main className="flex-1 min-h-screen pb-20 lg:pb-0 lg:pl-72 focus:outline-none">
+            <main className="flex-1 min-h-screen pb-24 lg:pb-0 lg:pl-[340px]">
               {children}
             </main>
             <BottomNav />

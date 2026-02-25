@@ -7,22 +7,28 @@ import { ReactNode } from "react";
 interface GlassCardProps {
     children: ReactNode;
     className?: string;
+    variant?: "elevated" | "filled" | "outlined";
     hover?: boolean;
     delay?: number;
 }
 
-/**
- * GlassCard is now a BrutalCard to match the Cyber-Brutalist theme.
- * Keeping the name for backward compatibility.
- */
-export const GlassCard = ({ children, className, hover = true, delay = 0 }: GlassCardProps) => {
+export const GlassCard = ({
+    children,
+    className,
+    variant = "filled",
+    hover = true,
+    delay = 0
+}: GlassCardProps) => {
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.5, delay, ease: [0.2, 0, 0, 1] }}
             className={cn(
-                "brutal-card rounded-none p-6 relative overflow-hidden group",
+                "m3-card relative overflow-hidden group/m3card",
+                variant === "elevated" && "m3-card-elevated",
+                variant === "outlined" && "m3-card-outline",
+                hover && "hover:bg-surface-container-high cursor-pointer",
                 className
             )}
         >
@@ -32,3 +38,4 @@ export const GlassCard = ({ children, className, hover = true, delay = 0 }: Glas
         </motion.div>
     );
 };
+
