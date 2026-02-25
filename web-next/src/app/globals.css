@@ -40,10 +40,10 @@ body {
   }
 
   .glass {
-    @apply bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0, 0, 0, 1)] transition-all;
+    @apply bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_#000000] transition-all;
   }
 
   .glass:hover {
-    @apply translate-x-[-2px] translate-y-[-2px] shadow-[10px_10px_0px_0px_rgba(0, 0, 0, 1)];
+    @apply -translate-x-1 -translate-y-1 shadow-[12px_12px_0px_0px_#000000];
   }
 }
