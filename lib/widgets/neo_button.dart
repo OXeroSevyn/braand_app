@@ -7,6 +7,7 @@ class NeoButton extends StatefulWidget {
   final Widget? icon;
   final bool isLoading;
   final Color? color;
+  final Color? textColor;
 
   const NeoButton({
     super.key,
@@ -15,6 +16,7 @@ class NeoButton extends StatefulWidget {
     this.icon,
     this.isLoading = false,
     this.color,
+    this.textColor,
   });
 
   @override
@@ -95,8 +97,8 @@ class _NeoButtonState extends State<NeoButton>
                       ],
                       Text(
                         widget.text,
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: widget.textColor ?? Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           letterSpacing: 0.5,

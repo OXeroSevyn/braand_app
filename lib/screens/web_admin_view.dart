@@ -8,14 +8,11 @@ import '../models/user.dart';
 import '../models/attendance_record.dart';
 import '../services/supabase_service.dart';
 import '../providers/auth_provider.dart';
-import '../providers/theme_provider.dart';
 import '../widgets/neo_card.dart';
 import 'attendance_screen.dart';
 import 'messages_screen.dart';
 import 'reports_screen.dart';
 import 'admin_tasks_screen.dart';
-import 'profile_screen.dart';
-import 'user_management_screen.dart';
 import 'admin_employee_list_screen.dart';
 import 'notice_board_screen.dart';
 
