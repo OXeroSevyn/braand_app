@@ -16,6 +16,7 @@ import 'package:braand_app/models/attendance_stats.dart';
 import '../models/app_version.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'offline_sync_service.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -232,7 +233,7 @@ class SupabaseService {
   // --- Attendance Records ---
 
   Future<void> saveRecord(AttendanceRecord record) async {
-    await _supabase.from('attendance_records').insert({
+    final Map<String, dynamic> data = {
       'user_id': record.userId,
       'type': record.type.toString(),
       'timestamp': record.timestamp,
@@ -243,7 +244,25 @@ class SupabaseService {
       'photo_url': record.photoUrl,
       'verification_method': record.verificationMethod,
       'mood': record.mood,
-    });
+    };
+
+    try {
+      await _supabase.from('attendance_records').insert(data);
+      debugPrint('✅ Attendance record saved successfully');
+    } catch (e) {
+      debugPrint('⚠️ Failed to save record to Supabase, queuing offline: $e');
+      // If network error, queue it
+      final OfflineSyncService offlineService = OfflineSyncService();
+      await offlineService.queueAction(
+        action: 'attendance_record',
+        data: data,
+      );
+    }
+  }
+
+  /// FOR OFFLINE SYNC ONLY: Directly insert pre-formatted data
+  Future<void> manualInsertAttendance(Map<String, dynamic> data) async {
+    await _supabase.from('attendance_records').insert(data);
   }
 
   Future<List<AttendanceRecord>> getRecords() async {
@@ -2144,5 +2163,119 @@ class SupabaseService {
       debugPrint('❌ Error fetching aggregated moods: $e');
       return {};
     }
+  }
+
+  // --- Automated Daily Stand-up ---
+
+  Future<Map<String, dynamic>> generateDailySummary() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay =
+          DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+
+      final recordsResponse = await _supabase
+          .from('attendance_records')
+          .select()
+          .gte('timestamp', startOfDay);
+
+      final List<dynamic> records = recordsResponse as List<dynamic>;
+
+      int activeUsers =
+          records.map((r) => r['user_id']).toSet().toList().length;
+      int clockIns =
+          records.where((r) => r['type'] == 'AttendanceType.CLOCK_IN').length;
+      int breaks = records
+          .where((r) => r['type'] == 'AttendanceType.BREAK_START')
+          .length;
+
+      final moods = records
+          .where((r) => r['mood'] != null)
+          .map((r) => r['mood'] as String)
+          .toList();
+
+      return {
+        'date': now.toIso8601String(),
+        'active_users': activeUsers,
+        'clock_ins': clockIns,
+        'breaks_taken': breaks,
+        'moods': moods,
+      };
+    } catch (e) {
+      debugPrint('❌ Error generating daily summary: $e');
+      return {};
+    }
+  }
+
+  Future<void> sendDailyStandupToAdmins() async {
+    try {
+      final summary = await generateDailySummary();
+      if (summary.isEmpty) return;
+
+      final admins = await getAllAdmins();
+      final message = '📊 Daily Stand-up Summary\n'
+          'Active Users: ${summary['active_users']}\n'
+          'Clock-ins: ${summary['clock_ins']}\n'
+          'Breaks: ${summary['breaks_taken']}';
+
+      for (var admin in admins) {
+        await sendNotification(
+          userId: admin.id,
+          title: 'Team Daily Summary',
+          body: message,
+          data: {'type': 'daily_summary', 'summary': summary},
+        );
+      }
+      debugPrint('✅ Daily summary sent to admins');
+    } catch (e) {
+      debugPrint('❌ Error sending daily summary: $e');
+    }
+  }
+
+  // --- Milestone Celebration Bot ---
+
+  Future<void> checkAndBroadcastMilestones() async {
+    try {
+      final now = DateTime.now();
+      final todayStr =
+          '${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      // Birthdays (Format in DB is YYYY-MM-DD or similar, we check MM-DD)
+      final profilesResponse = await _supabase.from('profiles').select();
+      final List<dynamic> profiles = profilesResponse as List<dynamic>;
+
+      for (var profile in profiles) {
+        final birthday = profile['birthday'] as String?;
+        final joiningDate = profile['joining_date'] as String?;
+        final name = profile['name'] ?? 'Team Member';
+
+        if (birthday != null && birthday.contains(todayStr)) {
+          await _broadcastMilestone(
+            title: '🎂 Happy Birthday!',
+            message: 'Wishing $name a fantastic birthday today! 🎈',
+          );
+        }
+
+        if (joiningDate != null && joiningDate.contains(todayStr)) {
+          final joinYear = DateTime.parse(joiningDate).year;
+          final years = now.year - joinYear;
+          if (years > 0) {
+            await _broadcastMilestone(
+              title: '🎊 Work Anniversary!',
+              message:
+                  'Congratulations to $name on completing $years ${years == 1 ? 'year' : 'years'} with the team! 🚀',
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking milestones: $e');
+    }
+  }
+
+  Future<void> _broadcastMilestone({
+    required String title,
+    required String message,
+  }) async {
+    await sendCustomNotification(title: title, message: message);
   }
 }

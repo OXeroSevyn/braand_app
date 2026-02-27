@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/continuous_banner.dart';
 import '../widgets/employee_carousel.dart';
 import '../constants.dart';
@@ -46,6 +47,7 @@ class _AdminViewState extends State<AdminView> {
   List<AttendanceRecord> _recentActivity = [];
   Map<String, int> _moodCounts = {};
   List<Map<String, String>> _notices = [];
+  Map<String, dynamic> _dailySummary = {};
 
   @override
   void initState() {
@@ -107,6 +109,9 @@ class _AdminViewState extends State<AdminView> {
       final records = await _supabaseService.getRecords();
       final moods = await _supabaseService.getAggregatedMoods();
       final noticesRaw = await _supabaseService.getNotices();
+      final summary = await _supabaseService.generateDailySummary();
+
+      _checkAutomatedTasks();
 
       final notices = noticesRaw
           .map((n) => {
@@ -121,10 +126,28 @@ class _AdminViewState extends State<AdminView> {
           _recentActivity = records.take(20).toList();
           _moodCounts = moods;
           _notices = notices;
+          _dailySummary = summary;
         });
       }
     } catch (e) {
       debugPrint('Error loading admin data: $e');
+    }
+  }
+
+  Future<void> _checkAutomatedTasks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final lastRun = prefs.getString('last_admin_auto_run');
+
+      if (lastRun != today) {
+        debugPrint('🤖 Triggering automated daily tasks...');
+        await _supabaseService.checkAndBroadcastMilestones();
+        await _supabaseService.sendDailyStandupToAdmins();
+        await prefs.setString('last_admin_auto_run', today);
+      }
+    } catch (e) {
+      debugPrint('Error running automated tasks: $e');
     }
   }
 
@@ -320,6 +343,11 @@ class _AdminViewState extends State<AdminView> {
                   ],
                 ),
                 const SizedBox(height: 24),
+
+                if (_dailySummary.isNotEmpty) ...[
+                  _buildDailySummaryCard(),
+                  const SizedBox(height: 24),
+                ],
 
                 // 2. Quick Actions Grid
                 Text(
@@ -786,6 +814,97 @@ class _AdminViewState extends State<AdminView> {
             }).toList(),
         ],
       ),
+    );
+  }
+
+  Widget _buildDailySummaryCard() {
+    final int active = _dailySummary['active_users'] ?? 0;
+    final int clockIns = _dailySummary['clock_ins'] ?? 0;
+    final int breaks = _dailySummary['breaks_taken'] ?? 0;
+
+    return NeoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.summarize, size: 20, color: AppColors.brand),
+                  const SizedBox(width: 8),
+                  Text(
+                    'DAILY STAND-UP',
+                    style: GoogleFonts.spaceMono(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'AUTOMATED',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildSummaryItem(
+                  'ACTIVE', active.toString(), Icons.people_outline),
+              _buildSummaryItem('IN', clockIns.toString(), Icons.login),
+              _buildSummaryItem(
+                  'BREAKS', breaks.toString(), Icons.coffee_outlined),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Team vibe is looking solid today based on morning check-ins.',
+            style: GoogleFonts.spaceMono(
+              fontSize: 10,
+              color: Colors.grey,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.spaceMono(
+            fontSize: 8,
+            color: Colors.grey,
+          ),
+        ),
+      ],
     );
   }
 }

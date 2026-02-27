@@ -12,6 +12,7 @@ import '../models/attendance_record.dart';
 import '../services/supabase_service.dart';
 import '../services/attendance_verification_service.dart';
 import '../services/office_hours_service.dart';
+import '../services/offline_sync_service.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/neo_card.dart';
 import '../widgets/neo_button.dart';
@@ -42,6 +43,7 @@ class _EmployeeViewState extends State<EmployeeView> {
   final AttendanceVerificationService _verificationService =
       AttendanceVerificationService();
   final OfficeHoursService _officeHoursService = OfficeHoursService();
+  final OfflineSyncService _offlineSyncService = OfflineSyncService();
   int _currentIndex = 0;
   int _unreadCount = 0;
   Timer? _refreshTimer;
@@ -54,6 +56,8 @@ class _EmployeeViewState extends State<EmployeeView> {
   String? _selectedMood;
   String _status = 'IDLE';
   AttendanceType? _loadingType; // Track which button is loading
+  int _pendingSyncCount = 0;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -138,8 +142,36 @@ class _EmployeeViewState extends State<EmployeeView> {
           _determineStatus(records);
         });
       }
+
+      // Check for offline items and sync
+      final pendingCount = await _offlineSyncService.getPendingCount();
+      if (mounted) setState(() => _pendingSyncCount = pendingCount);
+
+      if (pendingCount > 0 && !_isSyncing) {
+        _syncOfflineData();
+      }
     } catch (e) {
       debugPrint('Error loading employee data: $e');
+    }
+  }
+
+  Future<void> _syncOfflineData() async {
+    if (_isSyncing) return;
+    setState(() => _isSyncing = true);
+    try {
+      await _offlineSyncService.syncPendingActions();
+      final count = await _offlineSyncService.getPendingCount();
+      if (mounted) {
+        setState(() {
+          _pendingSyncCount = count;
+          _isSyncing = false;
+        });
+        if (count == 0) {
+          _loadData(); // Reload to get newly synced records
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isSyncing = false);
     }
   }
 
@@ -618,6 +650,57 @@ class _EmployeeViewState extends State<EmployeeView> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const ClockWidget(),
+                if (_pendingSyncCount > 0) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: _isSyncing
+                          ? Colors.blue.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      border: Border.all(
+                        color: _isSyncing ? Colors.blue : Colors.orange,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: _isSyncing
+                              ? const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue),
+                                )
+                              : const Icon(Icons.cloud_off,
+                                  size: 16, color: Colors.orange),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _isSyncing
+                                ? 'Syncing $_pendingSyncCount records...'
+                                : 'Offline: $_pendingSyncCount records ready to sync',
+                            style: GoogleFonts.spaceMono(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _isSyncing ? Colors.blue : Colors.orange,
+                            ),
+                          ),
+                        ),
+                        if (!_isSyncing)
+                          GestureDetector(
+                            onTap: _syncOfflineData,
+                            child: const Icon(Icons.sync,
+                                size: 20, color: Colors.orange),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 LocationStatusWidget(),
                 const SizedBox(height: 24),
