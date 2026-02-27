@@ -27,7 +27,7 @@ class NotificationService {
     // 2. Initialize Local Notifications (for displaying foreground messages)
     if (!kIsWeb) {
       const AndroidInitializationSettings initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+          AndroidInitializationSettings('@drawable/ic_notification');
 
       // Note: iOS settings setup omitted for brevity but can be added if needed
       final InitializationSettings initializationSettings =
@@ -139,7 +139,7 @@ class NotificationService {
             'High Importance Notifications', // channel Name
             importance: Importance.max,
             priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
+            icon: '@drawable/ic_notification',
           ),
         ),
       );
