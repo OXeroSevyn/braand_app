@@ -12,6 +12,8 @@ import 'admin_task_review_screen.dart';
 
 import '../services/gamification_service.dart';
 import '../models/leaderboard_entry.dart';
+import '../widgets/glass_container.dart';
+import '../widgets/neo_card.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -167,38 +169,20 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                           // Top 3 Podium
                           _buildPodium(entries, isDark),
 
-                          // Reduced gap here
                           const SizedBox(height: 10),
 
                           // List
                           Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.darkSurface
-                                    : Colors.white,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(30),
-                                  topRight: Radius.circular(30),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, -5),
-                                  ),
-                                ],
-                              ),
-                              child: ListView.builder(
-                                padding: const EdgeInsets.only(
-                                    top: 20, left: 20, right: 20, bottom: 20),
-                                itemCount:
-                                    entries.length > 3 ? entries.length - 3 : 0,
-                                itemBuilder: (context, index) {
-                                  final entry = entries[index + 3];
-                                  return _buildListTile(entry, isDark, isAdmin);
-                                },
-                              ),
+                            child: ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              itemCount:
+                                  entries.length > 3 ? entries.length - 3 : 0,
+                              itemBuilder: (context, index) {
+                                final entry = entries[index + 3];
+                                return _buildGamifiedCard(
+                                    entry, isDark, isAdmin);
+                              },
                             ),
                           ),
                         ],
@@ -245,53 +229,43 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget _buildPodium(List<LeaderboardEntry> entries, bool isDark) {
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 250, // Reduced podium height slightly
-      child: Stack(
-        alignment: Alignment.bottomCenter,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // 2nd Place
           if (entries.length > 1)
-            Positioned(
-              left: 30, // Adjusted layout
-              bottom: 0,
-              child: _buildPodiumStep(
-                entries[1],
-                isDark,
-                height: 160,
-                color: Colors.grey.shade400,
-                rank: 2,
-              ),
+            _buildPodiumStep(
+              entries[1],
+              isDark,
+              height: 120,
+              color: Colors.grey.shade400,
+              rank: 2,
             ),
+          const SizedBox(width: 8),
+
+          // 1st Place
+          _buildPodiumStep(
+            entries[0],
+            isDark,
+            height: 150,
+            color: const Color(0xFFFFD700), // Gold
+            rank: 1,
+            isFirst: true,
+          ),
+          const SizedBox(width: 8),
 
           // 3rd Place
           if (entries.length > 2)
-            Positioned(
-              right: 30, // Adjusted layout
-              bottom: 0,
-              child: _buildPodiumStep(
-                entries[2],
-                isDark,
-                height: 140,
-                color: const Color(0xFFCD7F32), // Bronze
-                rank: 3,
-              ),
-            ),
-
-          // 1st Place
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 20, // Lifted up slightly
-            child: _buildPodiumStep(
-              entries[0],
+            _buildPodiumStep(
+              entries[2],
               isDark,
-              height: 200,
-              color: const Color(0xFFFFD700), // Gold
-              rank: 1,
-              isFirst: true,
+              height: 100,
+              color: const Color(0xFFCD7F32), // Bronze
+              rank: 3,
             ),
-          ),
         ],
       ),
     );
@@ -308,103 +282,94 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final isAdmin =
         Provider.of<AuthProvider>(context, listen: false).user?.role == 'Admin';
 
-    return GestureDetector(
-      onTap: isAdmin
-          ? () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      AdminTaskReviewScreen(employee: entry.user),
-                ),
-              )
-          : null,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Crown for 1st
-          if (isFirst)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Icon(Icons.emoji_events, color: color, size: 28),
-            ),
-
-          // Avatar
-          Stack(
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (isFirst)
+          const Icon(Icons.emoji_events, color: Colors.amber, size: 30),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: isAdmin
+              ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          AdminTaskReviewScreen(employee: entry.user),
+                    ),
+                  )
+              : null,
+          child: Stack(
             alignment: Alignment.center,
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.5),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: UserAvatar(
-                  avatarUrl: entry.user.avatar,
-                  name: entry.user.name,
-                  size: isFirst ? 70 : 50,
-                ),
+              UserAvatar(
+                avatarUrl: entry.user.avatar,
+                name: entry.user.name,
+                size: isFirst ? 80 : 65,
               ),
               Positioned(
-                bottom: -5,
+                bottom: 0,
+                right: 0,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                   child: Text(
                     rank.toString(),
-                    style: GoogleFonts.spaceMono(
-                      fontWeight: FontWeight.bold,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-
-          Text(
-            entry.user.name.split(' ')[0], // First name only
-            style: GoogleFonts.spaceGrotesk(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: isDark ? Colors.white : Colors.black,
-            ),
+        ),
+        const SizedBox(height: 12),
+        GlassContainer(
+          width: isFirst ? 100 : 80,
+          height: height,
+          opacity: 0.1,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          Text(
-            '${entry.score} pts',
-            style: GoogleFonts.spaceMono(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                entry.user.name.split(' ')[0],
+                style: GoogleFonts.spaceGrotesk(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${entry.score}',
+                style: GoogleFonts.spaceMono(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: AppColors.brand,
+                ),
+              ),
+            ],
           ),
-          if (!isFirst) const SizedBox(height: 8),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildListTile(LeaderboardEntry entry, bool isDark, bool isAdmin) {
+  Widget _buildGamifiedCard(LeaderboardEntry entry, bool isDark, bool isAdmin) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black12,
-        ),
-      ),
-      child: ListTile(
-        visualDensity: VisualDensity.compact,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: NeoCard(
+        padding: const EdgeInsets.all(12),
         onTap: isAdmin
             ? () => Navigator.push(
                   context,
@@ -414,26 +379,26 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   ),
                 )
             : null,
-        leading: Container(
-          width: 30,
-          alignment: Alignment.center,
-          child: Text(
-            '#${entry.rank}',
-            style: GoogleFonts.spaceMono(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        title: Row(
+        child: Row(
           children: [
+            Container(
+              width: 30,
+              child: Text(
+                '#${entry.rank}',
+                style: GoogleFonts.spaceMono(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             UserAvatar(
               avatarUrl: entry.user.avatar,
               name: entry.user.name,
-              size: 30,
+              size: 40,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,38 +407,68 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                     entry.user.name,
                     style: GoogleFonts.spaceGrotesk(
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                   ),
-                  Text(
-                    '${entry.tasksCompleted} tasks completed',
-                    style: GoogleFonts.spaceMono(
-                      fontSize: 9,
-                      color: Colors.grey,
-                    ),
+                  Row(
+                    children: [
+                      _buildMiniTag('✅ ${entry.tasksCompleted}'),
+                      const SizedBox(width: 4),
+                      _buildMiniTag('🎭 ${entry.moodPoints}'),
+                      const SizedBox(width: 4),
+                      _buildMiniTag('📅 ${entry.attendancePoints}'),
+                      const SizedBox(width: 4),
+                      _buildMiniTag(_getTrendIcon(entry.trend)),
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.brand.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.brand),
-          ),
-          child: Text(
-            '${entry.score}',
-            style: GoogleFonts.spaceMono(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-              color: AppColors.brand,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${entry.score}',
+                  style: GoogleFonts.spaceMono(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: AppColors.brand,
+                  ),
+                ),
+                Text(
+                  'POINTS',
+                  style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.grey),
+                ),
+              ],
             ),
-          ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildMiniTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.spaceMono(fontSize: 8, color: Colors.grey),
+      ),
+    );
+  }
+
+  String _getTrendIcon(String trend) {
+    switch (trend) {
+      case 'UP':
+        return '📈';
+      case 'DOWN':
+        return '📉';
+      default:
+        return '➖';
+    }
   }
 }

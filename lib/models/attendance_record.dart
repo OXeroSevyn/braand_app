@@ -25,6 +25,7 @@ class AttendanceRecord {
   final bool biometricVerified;
   final String? photoUrl;
   final String? verificationMethod; // 'fingerprint', 'face_id', or 'none'
+  final String? mood; // 'rocket', 'smile', 'coffee', 'sleep'
 
   AttendanceRecord({
     required this.id,
@@ -36,6 +37,7 @@ class AttendanceRecord {
     this.biometricVerified = false,
     this.photoUrl,
     this.verificationMethod,
+    this.mood,
   });
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
@@ -52,6 +54,7 @@ class AttendanceRecord {
       biometricVerified: json['biometric_verified'] ?? false,
       photoUrl: json['photo_url'],
       verificationMethod: json['verification_method'],
+      mood: json['mood'],
     );
   }
 
@@ -66,6 +69,7 @@ class AttendanceRecord {
       'biometric_verified': biometricVerified,
       'photo_url': photoUrl,
       'verification_method': verificationMethod,
+      'mood': mood,
     };
   }
 }

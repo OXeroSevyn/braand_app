@@ -11,6 +11,10 @@ import '../services/supabase_service.dart';
 import '../services/camera_service.dart';
 import '../widgets/neo_card.dart';
 import '../widgets/neo_button.dart';
+import '../widgets/badge_gallery.dart';
+import '../widgets/loot_box_view.dart';
+import '../services/gamification_service.dart';
+import '../models/achievement.dart';
 
 class ProfileScreen extends StatefulWidget {
   final User user;
@@ -29,6 +33,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   final CameraService _cameraService = CameraService();
+  final GamificationService _gamificationService = GamificationService();
 
   late TextEditingController _nameController;
   late TextEditingController _departmentController;
@@ -38,6 +43,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditing = false;
   bool _isSaving = false;
   String? _avatarUrl;
+  List<Achievement> _achievements = [];
+  int _lootBoxCount = 0;
+  bool _isLoadingGamification = true;
   CameraController? _cameraController;
 
   @override
@@ -48,6 +56,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _bioController = TextEditingController(text: widget.user.bio ?? '');
     _phoneController = TextEditingController(text: widget.user.phone ?? '');
     _avatarUrl = widget.user.avatar;
+    _loadGamificationData();
+  }
+
+  Future<void> _loadGamificationData() async {
+    try {
+      final achievements =
+          await _gamificationService.getAchievements(widget.user.id);
+      final boxCount =
+          await _gamificationService.getLootBoxCount(widget.user.id);
+      if (mounted) {
+        setState(() {
+          _achievements = achievements;
+          _lootBoxCount = boxCount;
+          _isLoadingGamification = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading gamification data: $e');
+      if (mounted) setState(() => _isLoadingGamification = false);
+    }
   }
 
   @override
@@ -551,9 +579,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
+
+            const SizedBox(height: 32),
+
+            // Loot Box Section
+            if (widget.isOwnProfile && _lootBoxCount > 0)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    child: Text(
+                      'AVAILABLE REWARDS',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  _buildLootBoxInventoryCard(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+
+            // Achievement Gallery
+            if (_isLoadingGamification)
+              const Center(child: CircularProgressIndicator())
+            else
+              BadgeGallery(achievements: _achievements),
+
+            const SizedBox(height: 40),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLootBoxInventoryCard() {
+    return NeoCard(
+      padding: const EdgeInsets.all(16),
+      backgroundColor: AppColors.brand.withOpacity(0.05),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.brand.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.card_giftcard,
+                color: AppColors.brand, size: 30),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BRAAND BOX AVAILABLE!',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'You earned this for your 7-day streak.',
+                  style:
+                      GoogleFonts.spaceMono(fontSize: 10, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          NeoButton(
+            text: 'OPEN',
+            color: AppColors.brand,
+            textColor: Colors.black,
+            onPressed: _showLootBoxOpening,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLootBoxOpening() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.9),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, anim1, anim2) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: LootBoxView(
+            rewardTitle: 'PREMIUM AVATAR FRAME',
+            rewardIcon: '🖼️',
+            onOpened: () {
+              setState(() => _lootBoxCount--);
+            },
+          ),
+        );
+      },
     );
   }
 

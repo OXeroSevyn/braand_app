@@ -242,6 +242,7 @@ class SupabaseService {
       'biometric_verified': record.biometricVerified,
       'photo_url': record.photoUrl,
       'verification_method': record.verificationMethod,
+      'mood': record.mood,
     });
   }
 
@@ -265,6 +266,7 @@ class SupabaseService {
                 lng: json['location_lng'],
               )
             : null,
+        mood: json['mood'],
       );
     }).toList();
   }
@@ -289,6 +291,7 @@ class SupabaseService {
                 lng: json['location_lng'],
               )
             : null,
+        mood: json['mood'],
       );
     }).toList();
   }
@@ -332,6 +335,7 @@ class SupabaseService {
                 lng: json['location_lng'],
               )
             : null,
+        mood: json['mood'],
       );
     }).toList();
   }
@@ -2028,5 +2032,117 @@ class SupabaseService {
     await _supabase
         .from('banner_announcements')
         .update({'is_active': false}).eq('id', id);
+  }
+
+  // --- Premium Features Logic ---
+
+  /// Calculate the current attendance streak for a user
+  Future<int> calculateStreak(String userId) async {
+    try {
+      final response = await _supabase
+          .from('attendance_records')
+          .select('timestamp, type')
+          .eq('user_id', userId)
+          .eq('type', 'AttendanceType.CLOCK_IN')
+          .order('timestamp', ascending: false);
+
+      final List<dynamic> data = response as List<dynamic>;
+      if (data.isEmpty) return 0;
+
+      final List<DateTime> dates = data.map((json) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(json['timestamp']);
+        return DateTime(dt.year, dt.month, dt.day);
+      }).toList();
+
+      // Remove duplicates (multiple clock-ins on same day)
+      final uniqueDates = dates.toSet().toList();
+      uniqueDates.sort((a, b) => b.compareTo(a));
+
+      int streak = 0;
+      DateTime today = DateTime.now();
+      DateTime checkDate = DateTime(today.year, today.month, today.day);
+
+      // If the latest record is not today or yesterday, streak is broken
+      if (uniqueDates.first
+          .isBefore(checkDate.subtract(const Duration(days: 1)))) {
+        return 0;
+      }
+
+      for (int i = 0; i < uniqueDates.length; i++) {
+        if (uniqueDates[i] == checkDate ||
+            uniqueDates[i] == checkDate.subtract(Duration(days: streak))) {
+          if (uniqueDates[i] == checkDate ||
+              uniqueDates[i] == checkDate.subtract(Duration(days: streak))) {
+            streak++;
+          } else {
+            break;
+          }
+        } else {
+          // If there's a gap, break
+          if (uniqueDates[i]
+              .isBefore(checkDate.subtract(Duration(days: streak)))) {
+            break;
+          }
+        }
+      }
+
+      // Re-implementing simpler streak logic
+      streak = 0;
+      DateTime current = uniqueDates.first;
+
+      // If the most recent is older than yesterday, streak is 0
+      if (current.isBefore(checkDate.subtract(const Duration(days: 1)))) {
+        return 0;
+      }
+
+      streak = 1;
+      for (int i = 1; i < uniqueDates.length; i++) {
+        if (uniqueDates[i - 1].difference(uniqueDates[i]).inDays == 1) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      return streak;
+    } catch (e) {
+      debugPrint('❌ Error calculating streak: $e');
+      return 0;
+    }
+  }
+
+  /// Get aggregated mood data for the last 7 days (Admin Insight)
+  Future<Map<String, int>> getAggregatedMoods() async {
+    try {
+      final sevenDaysAgo = DateTime.now()
+          .subtract(const Duration(days: 7))
+          .millisecondsSinceEpoch;
+
+      final response = await _supabase
+          .from('attendance_records')
+          .select('mood')
+          .not('mood', 'is', null)
+          .gte('timestamp', sevenDaysAgo);
+
+      final List<dynamic> data = response as List<dynamic>;
+      final Map<String, int> moodCounts = {
+        'rocket': 0,
+        'smile': 0,
+        'coffee': 0,
+        'sleep': 0,
+      };
+
+      for (var item in data) {
+        final mood = item['mood'] as String?;
+        if (mood != null && moodCounts.containsKey(mood)) {
+          moodCounts[mood] = moodCounts[mood]! + 1;
+        }
+      }
+
+      return moodCounts;
+    } catch (e) {
+      debugPrint('❌ Error fetching aggregated moods: $e');
+      return {};
+    }
   }
 }

@@ -26,6 +26,8 @@ import 'notice_board_screen.dart';
 import 'admin_release_screen.dart';
 import 'leaderboard_screen.dart';
 import 'admin_performance_screen.dart';
+import '../widgets/broadcast_stories.dart';
+import '../widgets/vibe_heatmap.dart';
 
 class AdminView extends StatefulWidget {
   const AdminView({super.key});
@@ -42,6 +44,8 @@ class _AdminViewState extends State<AdminView> {
   Timer? _unreadCheckTimer;
   List<User> _employees = [];
   List<AttendanceRecord> _recentActivity = [];
+  Map<String, int> _moodCounts = {};
+  List<Map<String, String>> _notices = [];
 
   @override
   void initState() {
@@ -101,11 +105,22 @@ class _AdminViewState extends State<AdminView> {
     try {
       final emps = await _supabaseService.getAllEmployees();
       final records = await _supabaseService.getRecords();
+      final moods = await _supabaseService.getAggregatedMoods();
+      final noticesRaw = await _supabaseService.getNotices();
+
+      final notices = noticesRaw
+          .map((n) => {
+                'title': n.title,
+                'category': n.priority == 'HIGH' ? 'URGENT' : 'NEWS',
+              })
+          .toList();
 
       if (mounted) {
         setState(() {
           _employees = emps;
           _recentActivity = records.take(20).toList();
+          _moodCounts = moods;
+          _notices = notices;
         });
       }
     } catch (e) {
@@ -320,10 +335,28 @@ class _AdminViewState extends State<AdminView> {
                 _buildQuickActionsGrid(),
                 const SizedBox(height: 32),
 
-                // 3. Compact Stats
+                // Quick Stats Bar
                 _buildStats(),
                 const SizedBox(height: 24),
 
+                // Premium Admin Features
+                BroadcastStories(
+                  notices: _notices,
+                  onAddNotice: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => NoticeBoardScreen(
+                              user: Provider.of<AuthProvider>(context,
+                                      listen: false)
+                                  .user!,
+                            )),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                VibeHeatmap(moodCounts: _moodCounts),
+                const SizedBox(height: 24),
+
+                // Content Rows
                 // 4. Employee Table
                 _buildEmployeeTable(),
                 const SizedBox(height: 24),

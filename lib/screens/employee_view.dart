@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -10,14 +11,18 @@ import '../models/user.dart';
 import '../models/attendance_record.dart';
 import '../services/supabase_service.dart';
 import '../services/attendance_verification_service.dart';
+import '../services/office_hours_service.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/neo_card.dart';
 import '../widgets/neo_button.dart';
-import 'attendance_screen.dart';
 import '../widgets/location_status_widget.dart';
-import 'messages_screen.dart';
+import '../widgets/mood_slider.dart';
+import '../widgets/streak_card.dart';
+import '../widgets/daily_focus.dart';
+import '../widgets/broadcast_stories.dart';
+import 'attendance_screen.dart';
 import 'employee_tasks_screen.dart';
-import '../services/office_hours_service.dart';
+import 'messages_screen.dart';
 import 'profile_screen.dart';
 import 'notice_board_screen.dart';
 import 'leave_screen.dart';
@@ -42,6 +47,11 @@ class _EmployeeViewState extends State<EmployeeView> {
   Timer? _refreshTimer;
   Timer? _unreadCheckTimer;
   List<AttendanceRecord> _records = [];
+  int _streak = 0;
+  List<String> _topTasks = [];
+  String _latestNotice = '';
+  List<Map<String, String>> _notices = [];
+  String? _selectedMood;
   String _status = 'IDLE';
   AttendanceType? _loadingType; // Track which button is loading
 
@@ -77,6 +87,7 @@ class _EmployeeViewState extends State<EmployeeView> {
       if (mounted && _currentIndex != 3) {
         // Only check when not on Messages tab (index 3 now)
         try {
+          HapticFeedback.mediumImpact();
           final count = await _supabaseService.getUnreadCount(widget.user.id);
           if (mounted) {
             setState(() {
@@ -99,11 +110,32 @@ class _EmployeeViewState extends State<EmployeeView> {
 
   Future<void> _loadData() async {
     try {
-      final userRecords = await _supabaseService.getUserRecords(widget.user.id);
+      final records = await _supabaseService.getUserRecords(widget.user.id);
+      final streak = await _supabaseService.calculateStreak(widget.user.id);
+
+      // Fetch Daily Focus data
+      final dailyTasks = await _supabaseService.getDailyTasks(
+        date: DateTime.now(),
+        userId: widget.user.id,
+      );
+      final notices = await _supabaseService.getNotices();
+
       if (mounted) {
         setState(() {
-          _records = userRecords;
-          _determineStatus(userRecords);
+          _records = records;
+          _streak = streak;
+          _topTasks =
+              dailyTasks.take(2).map((t) => t['title'] as String).toList();
+          if (notices.isNotEmpty) {
+            _latestNotice = notices.first.title;
+          }
+          _notices = notices
+              .map((n) => {
+                    'title': n.title,
+                    'category': n.priority == 'HIGH' ? 'URGENT' : 'NEWS',
+                  })
+              .toList();
+          _determineStatus(records);
         });
       }
     } catch (e) {
@@ -183,26 +215,52 @@ class _EmployeeViewState extends State<EmployeeView> {
         return;
       }
 
-      // Step 3: Get location for record
-      Location? location;
-      try {
-        final pos = await Geolocator.getCurrentPosition();
-        location = Location(lat: pos.latitude, lng: pos.longitude);
-      } catch (e) {
-        debugPrint('Location error: $e');
-      }
+      // Step 3: Verify location (handled inside service)
 
       // Step 4: Save attendance record with verification data
+      // Show Mood Slider if it's a CLOCK_IN
+      if (type == AttendanceType.CLOCK_IN && mounted) {
+        await showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: MoodSlider(
+              onMoodSelected: (mood) {
+                setState(() => _selectedMood = mood);
+              },
+            ),
+          ),
+        );
+      }
+
+      // Get accurate location for the record
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 5),
+        );
+      } catch (e) {
+        debugPrint('⚠️ Error getting position for record: $e');
+      }
+
       final record = AttendanceRecord(
-        id: '', // Supabase generates ID
+        id: '',
         userId: widget.user.id,
         timestamp: DateTime.now().millisecondsSinceEpoch,
         type: type,
-        location: location,
+        location: position != null
+            ? Location(lat: position.latitude, lng: position.longitude)
+            : null,
         deviceId: verificationResult.deviceId,
         biometricVerified: verificationResult.biometricVerified,
         photoUrl: verificationResult.photoUrl,
         verificationMethod: verificationResult.verificationMethod,
+        mood: _selectedMood,
       );
 
       await _supabaseService.saveRecord(record);
@@ -566,6 +624,34 @@ class _EmployeeViewState extends State<EmployeeView> {
 
                 // Actions
                 _buildActions(),
+                const SizedBox(height: 24),
+
+                // Broadcast Stories
+                BroadcastStories(
+                  notices: _notices,
+                  onStoryTap: (notice) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            NoticeBoardScreen(user: widget.user),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Streak & Daily Focus
+                Row(
+                  children: [
+                    Expanded(child: StreakCard(streak: _streak)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                DailyFocus(
+                  topTasks: _topTasks,
+                  latestNotice: _latestNotice,
+                ),
                 const SizedBox(height: 24),
 
                 // Charts & AI
