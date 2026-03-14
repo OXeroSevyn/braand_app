@@ -1211,11 +1211,13 @@ async function pgAdminTasks(c){
     <div class="tab on" onclick="swTab(this,'tp-monthly')">Monthly Tasks</div>
     <div class="tab" onclick="swTab(this,'tp-daily')">Daily Tasks</div>
     <div class="tab" onclick="swTab(this,'tp-hourly')">Hourly Tasks</div>
+    <div class="tab" onclick="swTab(this,'tp-tracker')">Global Tracker</div>
     <div class="tab" onclick="swTab(this,'tp-review')">Submissions Review</div>
   </div>
   <div class="tp on" id="tp-monthly"><div class="ld"><div class="spin"></div></div></div>
   <div class="tp" id="tp-daily"></div>
   <div class="tp" id="tp-hourly"></div>
+  <div class="tp" id="tp-tracker"></div>
   <div class="tp" id="tp-review"></div>`;
   loadTaskPanel('monthly');
 }
@@ -1229,6 +1231,8 @@ async function loadTaskPanel(type){
   } else if(type==='hourly'){
     const{data}=await db.from('tasks').select('*').eq('task_type','hourly').order('created_at',{ascending:false});
     renderTaskList($('tp-hourly'),data,'tasks');
+  } else if(type==='tracker'){
+    loadTracker($('tp-tracker'));
   } else {
     const[{data:m}, {data:d}]=await Promise.all([
       db.from('user_monthly_tasks').select('*, monthly_tasks(title), profiles(name,email)').order('created_at',{ascending:false}),
@@ -1263,6 +1267,69 @@ async function assessUnifiedTask(id,table,status){
   const{error}=await db.from(table).update({admin_assessment:status}).eq('id',id);
   if(error){toast('Failed: '+error.message,'er');return}
   toast(`Task ${status}`,'ok');loadTaskPanel('review');
+}
+async function loadTracker(panel){
+  panel.innerHTML='<div class="ld"><div class="spin"></div></div>';
+  const[{data:m},{data:mt},{data:d}]=await Promise.all([
+    db.from('monthly_tasks').select('*'),
+    db.from('user_monthly_tasks').select('*, profiles(name,email), monthly_tasks(title)'),
+    db.from('tasks').select('*, profiles:assigned_to(name,email)').neq('task_type','personal')
+  ]);
+  const now=Date.now();
+  const tasks=[];
+  (mt||[]).forEach(t=>tasks.push({...t,type:'Monthly',title:t.monthly_tasks?.title, deadline:t.deadline_time, date:null}));
+  (d||[]).forEach(t=>tasks.push({...t,type:t.task_type.toUpperCase(), deadline:t.deadline_time, date:t.specific_date}));
+
+  const overdue=[];
+  const ongoing=[];
+  const pending=[];
+
+  tasks.forEach(t=>{
+    let isOverdue=false;
+    if(t.admin_assessment==='accepted') return;
+    
+    if(t.date || t.deadline){
+      let dt=t.date?new Date(t.date):new Date();
+      if(t.deadline){
+        const[h,m]=t.deadline.split(':');
+        dt.setHours(parseInt(h)||0,parseInt(m)||0,0,0);
+      } else {
+        dt.setHours(23,59,59,999);
+      }
+      if(dt.getTime()<now && t.admin_assessment!=='accepted') isOverdue=true;
+    }
+
+    if(isOverdue) overdue.push(t);
+    else if(t.status==='In Progress' || t.admin_assessment==='Review' || t.admin_assessment==='pending review') ongoing.push(t);
+    else pending.push(t);
+  });
+
+  const renderSection=(t,l,c)=>`
+    <div class="ch" style="margin-top:10px"><span class="ct" style="color:var(--${c})">${l} (${t.length})</span></div>
+    <div style="display:grid;gap:8px">${t.length?t.map(x=>`<div class="tcard" style="border-left:3px solid var(--${c})">
+      <div class="tc-t">${x.title}</div>
+      <div class="tc-m">
+        <span class="b bl">${x.type}</span>
+        <span>👤 ${x.profiles?.name||'Everyone'}</span>
+        ${x.deadline?`<span style="color:var(--${isPast(x)?'red':'t3'})">⏰ ${x.deadline}</span>`:''}
+        ${x.date?`<span style="color:var(--${isPast(x)?'red':'t3'})">📅 ${fmt(x.date)}</span>`:''}
+      </div>
+    </div>`).join(''):`<div style="font-size:11px;color:var(--t3);padding:10px;text-align:center">No tasks in this category</div>`}</div>`;
+
+  const isPast=(x)=>{
+    if(!x.date && !x.deadline) return false;
+    let dt=x.date?new Date(x.date):new Date();
+    if(x.deadline) { const[h,m]=x.deadline.split(':'); dt.setHours(parseInt(h),parseInt(m)); }
+    else dt.setHours(23,59);
+    return dt.getTime()<now;
+  };
+
+  panel.innerHTML=`
+    <div class="g1">
+      ${renderSection(overdue,'Overdue Tasks','red')}
+      ${renderSection(ongoing,'Ongoing Activity','blue')}
+      ${renderSection(pending,'Upcoming / Pending','bk')}
+    </div>`;
 }
 function renderTaskList(panel,data,table){
   if(!data?.length){empty(panel,'No tasks created','✓');return}
@@ -1371,6 +1438,7 @@ function swTab(el,pid){
     if(!panel.innerHTML.trim()||panel.querySelector('.spin')){
       if(pid==='tp-daily')loadTaskPanel('daily');
       else if(pid==='tp-hourly')loadTaskPanel('hourly');
+      else if(pid==='tp-tracker')loadTaskPanel('tracker');
       else if(pid==='tp-review')loadTaskPanel('review');
     }
   }
