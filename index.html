@@ -1356,8 +1356,12 @@ function handleKbDragStart(e, id, type){
 }
 async function restoreTask(id, type){
   const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
+  const updateData = type==='Monthly' 
+    ? { is_archived: false, status: 'Pending' }
+    : { is_archived: false, admin_assessment: 'pending' };
+
   toast('Restoring task...','in');
-  const {error} = await db.from(table).update({is_archived: false, admin_assessment:'pending', status:'Pending'}).eq('id', id);
+  const {error} = await db.from(table).update(updateData).eq('id', id);
   if(error){toast('Error: '+error.message,'er');return}
   toast('Task restored','ok'); loadTracker($('tp-tracker'));
 }
