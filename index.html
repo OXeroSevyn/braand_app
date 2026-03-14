@@ -1300,126 +1300,133 @@ async function assessUnifiedTask(id,table,status){
   if(error){toast('Failed: '+error.message,'er');return}
   toast(`Task ${status}`,'ok');loadTaskPanel('review');
 }
+let pulseFilter = 'all';
+let pulseData = [];
+
 async function loadTracker(panel){
   panel.innerHTML='<div class="ld"><div class="spin"></div></div>';
   const res = await Promise.all([
     db.from('monthly_tasks').select('id,title'),
     db.from('user_monthly_tasks').select('*'),
     db.from('tasks').select('*'),
-    db.from('profiles').select('id,name,email')
+    db.from('profiles').select('id,name')
   ]);
-  const [{data:m},{data:mt},{data:d}, {data:profs}] = res;
-  const pm = {}; (profs||[]).forEach(p=>pm[p.id]=p);
-  const mm = {}; (m||[]).forEach(x=>mm[x.id]=x);
+  
+  const [mt, umt, t, profs] = res.map(r=>r.data||[]);
+  const pm = {}; (profs||[]).forEach(p=>pm[p.id]=p.name);
+  
+  pulseData = [
+    ...umt.map(x=>({ ...x, title: mt.find(m=>m.id===x.task_id)?.title||'Unknown', type:'Monthly', owner:pm[x.user_id] })),
+    ...t.map(x=>({ ...x, type:'Standard', owner:pm[x.user_id] }))
+  ];
 
-  const allTasks=[];
-  (mt||[]).forEach(t=>allTasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time || null}));
-  (d||[]).forEach(t=>allTasks.push({...t,type:'TASK', profiles: pm[t.user_id], deadline:t.end_time || null}));
+  renderPulseView(panel);
+}
 
-  const renderKanban=(search='')=>{
-    const s=search.toLowerCase();
-    const tasks = allTasks.filter(t=> !s || ((t.title||'')+(t.profiles?.name||'')).toLowerCase().includes(s));
+function renderPulseView(panel){
+  const q = ($('tracker-search')?.value || '').toLowerCase();
+  const counts = { all:0, pending:0, ongoing:0, review:0, done:0, trash:0 };
+  
+  pulseData.forEach(d=>{
+    if(d.is_archived) counts.trash++;
+    else {
+      counts.all++;
+      const s = getPulseStatus(d);
+      counts[s]++;
+    }
+  });
 
-    const cols = {
-      todo: {t:'To Do', c:'bk', items:[]},
-      progress: {t:'In Progress', c:'blue', items:[]},
-      review: {t:'Review', c:'orange', items:[]},
-      done: {t:'Done', c:'green', items:[]},
-      trash: {t:'🗑 Trash', c:'red', items:[]}
-    };
+  const tabs = [
+    {id:'all', label:'All', icon:'apps'},
+    {id:'pending', label:'Pending', icon:'hourglass_empty'},
+    {id:'ongoing', label:'Ongoing', icon:'play_arrow'},
+    {id:'review', label:'Review', icon:'rate_review'},
+    {id:'done', label:'Finished', icon:'check_circle'},
+    {id:'trash', label:'Trash', icon:'delete'}
+  ];
 
-    tasks.forEach(t=>{
-      if(t.is_archived) cols.trash.items.push(t);
-      else if(t.admin_assessment==='accepted'||t.status==='Completed') cols.done.items.push(t);
-      else if(t.admin_assessment==='review'||t.status==='Review') cols.review.items.push(t);
-      else if(t.status==='In Progress' || t.admin_assessment==='in-progress') cols.progress.items.push(t);
-      else cols.todo.items.push(t);
-    });
-
-    const board = document.getElementById('kanban-board');
-    if(!board)return;
-    board.innerHTML = Object.entries(cols).map(([id, col])=>`
-      <div class="kb-col ${id==='trash'?'trash':''}" ondragover="event.preventDefault(); this.classList.add('kb-drop-over')" ondragleave="this.classList.remove('kb-drop-over')" ondrop="handleKbDrop(event, '${id}')">
-        <div class="kb-h"><span>${col.t}</span><span class="b ${col.c}">${col.items.length}</span></div>
-        <div class="kb-cnt" id="col-${id}">
-          ${col.items.map(x=>{
-            const isOverdue = x.deadline && new Date().toTimeString() > x.deadline && x.status!=='Completed' && x.admin_assessment!=='accepted';
-            return `<div class="kb-card" draggable="true" ondragstart="handleKbDragStart(event, '${x.id}', '${x.type}')" id="card-${x.id}">
-              <div class="kb-title">${x.title || 'Untitled'}</div>
-              <div class="kb-meta">
-                <span class="kb-tag bl">${x.type}</span>
-                <span>👤 ${x.profiles?.name || 'Everyone'}</span>
-                ${x.deadline ? `<span style="color:${isOverdue?'var(--red)':'var(--t3)'}">⏰ ${x.deadline}</span>` : ''}
-                ${id==='trash' ? `<button class="btn btn-g btn-s" style="margin-top:8px" onclick="restoreTask('${x.id}', '${x.type}')">Restore</button>` : ''}
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`).join('');
-  };
-
-  panel.innerHTML=`
-    <div style="margin-bottom:15px;display:flex;gap:10px;position:sticky;top:0;background:var(--bg);z-index:5;padding:5px 0">
-      <input type="text" class="si" placeholder="Search Kanban..." style="flex:1" oninput="loadTracker.render(this.value)" id="tracker-search">
+  panel.innerHTML = `
+    <div class="pulse-hub">
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px">
+        <input type="text" class="si" id="tracker-search" placeholder="Search Pulse..." style="flex:1" oninput="renderPulseView($('tp-tracker'))">
+        <button class="btn btn-ok" onclick="loadTracker($('tp-tracker'))"><span class="material-symbols-rounded">refresh</span></button>
+      </div>
+      <div class="pulse-tabs">
+        ${tabs.map(t=>`
+          <div class="pulse-tab ${pulseFilter===t.id?'active':''}" onclick="pulseTab('${t.id}')">
+            <span class="material-symbols-rounded" style="font-size:16px">${t.icon}</span>
+            ${t.label} <span class="count">${counts[t.id]}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="pulse-grid">
+        ${pulseData.filter(d=>{
+          if(q && !d.title?.toLowerCase().includes(q)) return false;
+          if(pulseFilter==='trash') return d.is_archived;
+          if(d.is_archived) return false;
+          if(pulseFilter==='all') return true;
+          return getPulseStatus(d) === pulseFilter;
+        }).map(d=>renderPulseCard(d)).join('')}
+      </div>
     </div>
-    <div class="kanban-board" id="kanban-board"></div>`;
-  loadTracker.render = renderKanban;
-  renderKanban();
+  `;
 }
 
-let kbDragging={id:null,type:null};
-function handleKbDragStart(e, id, type){
-  kbDragging={id, type};
-  e.dataTransfer.setData('text/plain', id);
-  e.target.classList.add('dragging');
+function pulseTab(f){ pulseFilter=f; renderPulseView($('tp-tracker')); }
+
+function getPulseStatus(d){
+  const isDone = d.type==='Monthly' ? d.status==='Completed' : d.admin_assessment==='accepted';
+  const isReview = d.type==='Monthly' ? d.status==='Review' : d.admin_assessment==='review';
+  const isOngoing = d.type==='Monthly' ? d.status==='In Progress' : d.admin_assessment==='in-progress';
+  if(isDone) return 'done';
+  if(isReview) return 'review';
+  if(isOngoing) return 'ongoing';
+  return 'pending';
 }
-async function restoreTask(id, type){
+
+function renderPulseCard(d){
+  const s = d.is_archived ? 'trash' : getPulseStatus(d);
+  return `
+    <div class="pc-card">
+      <div class="pc-glow ${s}"></div>
+      <div class="pc-head">
+        <div class="pc-title">${d.title}</div>
+        <div class="pc-tag ${d.type.toLowerCase()}">${d.type}</div>
+      </div>
+      <div class="pc-meta">
+        <span class="material-symbols-rounded" style="font-size:12px">person</span> ${d.owner || 'Anyone'}
+        • <span class="material-symbols-rounded" style="font-size:12px">calendar_today</span> ${new Date(d.created_at).toLocaleDateString()}
+      </div>
+      <div class="pc-footer">
+        ${renderPulseActions(d, s)}
+      </div>
+    </div>
+  `;
+}
+
+function renderPulseActions(d, s){
+  if(d.is_archived) return `<button class="pc-btn s" onclick="pulseAction('${d.id}','${d.type}','restore')"><span class="material-symbols-rounded" style="font-size:14px">settings_backup_restore</span> Restore</button>`;
+  let h = '';
+  if(s==='pending') h += `<button class="pc-btn p" onclick="pulseAction('${d.id}','${d.type}','start')">Start</button>`;
+  if(s==='ongoing') h += `<button class="pc-btn p" onclick="pulseAction('${d.id}','${d.type}','finalize')">Send Review</button>`;
+  if(s==='review') h += `<button class="pc-btn p" onclick="pulseAction('${d.id}','${d.type}','approve')">Approve</button>`;
+  h += `<button class="pc-btn r" onclick="pulseAction('${d.id}','${d.type}','archive')"><span class="material-symbols-rounded" style="font-size:14px">delete</span></button>`;
+  return h;
+}
+
+async function pulseAction(id, type, action){
   const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
-  const updateData = type==='Monthly' 
-    ? { is_archived: false, status: 'Pending' }
-    : { is_archived: false, admin_assessment: 'pending' };
+  let data = {};
+  if(action==='start') data = type==='Monthly' ? {status:'In Progress'} : {admin_assessment:'in-progress'};
+  if(action==='finalize') data = type==='Monthly' ? {status:'Review'} : {admin_assessment:'review'};
+  if(action==='approve') data = type==='Monthly' ? {status:'Completed', is_completed:true} : {admin_assessment:'accepted', is_completed:true};
+  if(action==='archive') data = {is_archived:true};
+  if(action==='restore') data = {is_archived:false, status:'Pending', admin_assessment:'pending'};
 
-  toast('Restoring task...','in');
-  const {error} = await db.from(table).update(updateData).eq('id', id);
-  if(error){toast('Error: '+error.message,'er');return}
-  toast('Task restored','ok'); loadTracker($('tp-tracker'));
-}
-async function handleKbDrop(e, colId){
-  e.preventDefault();
-  const el = e.currentTarget; el.classList.remove('kb-drop-over');
-  const {id, type} = kbDragging; if(!id) return;
-  
-  const statusMap = {
-    todo: { status: 'Pending', assessment: 'pending' },
-    progress: { status: 'In Progress', assessment: 'in-progress' },
-    review: { status: 'Review', assessment: 'review' },
-    done: { status: 'Completed', assessment: 'accepted' },
-    trash: { archived: true }
-  };
-  
-  const target = statusMap[colId];
-  const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
-  
-  let updateData = {};
-  if(target.archived){
-    updateData = { is_archived: true };
-  } else {
-    // We update status for BOTH just to be safe and consistent, 
-    // though the 'status' column error on 'tasks' suggest we should only update what exists.
-    // Based on the error "Could not find status column of tasks", I will only update status for Monthly.
-    updateData = type==='Monthly' 
-      ? { status: target.status, is_archived: false } 
-      : { admin_assessment: target.assessment, is_archived: false };
-    
-    if(target.status==='Completed') updateData.completed_at = new Date().toISOString();
-  }
-
-  toast('Updating status...','in');
-  const {error} = await db.from(table).update(updateData).eq('id', id);
-  if(error) { toast('Error: '+error.message, 'er'); return; }
-  
-  toast(target.archived ? 'Task archived' : 'Task moved to '+colId, 'ok');
-  loadTracker($('tp-tracker'));
+  toast('Updating...','in');
+  const {error} = await db.from(table).update(data).eq('id', id);
+  if(error) toast('Error: '+error.message,'er');
+  else { toast('Updated','ok'); loadTracker($('tp-tracker')); }
 }
 function renderTaskList(panel,data,table){
   if(!data?.length){empty(panel,'No tasks created','✓');return}
