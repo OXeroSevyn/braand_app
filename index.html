@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BRAAND School Plus v1.0.4</title>
-<!-- v1.0.4 - Organized Tracker & Completed Tasks -->
+<title>BRAAND School Plus v1.0.5</title>
+<!-- v1.0.5 - Removed Heatmap & Fixed Dashboard Stats -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -81,7 +81,7 @@ body.light .conv-i:hover,body.light .conv-i.on{background:var(--s3)}
 body.light .mon-card{background:var(--s2);border-color:var(--border)}
 body.light .mon-card.online{border-color:rgba(22,163,74,.35)}
 body.light .mon-card.break{border-color:rgba(234,88,12,.35)}
-body.light .hcell.h1{background:rgba(92,133,0,.2)} body.light .hcell.h2{background:rgba(92,133,0,.4)} body.light .hcell.h3{background:rgba(92,133,0,.6)} body.light .hcell.h4{background:rgba(92,133,0,.85)}
+
 body.light .progress-fill{background:var(--lime)}
 body.light .req-card{background:var(--s2);border-color:rgba(92,133,0,.2)}
 body.light .notice-preview-ticker{background:rgba(0,0,0,.04) !important}
@@ -322,11 +322,6 @@ a{color:inherit;text-decoration:none}
 .cw-sm{position:relative;height:150px}
 .cw-md{position:relative;height:250px}
 
-/* ══════════════════════════ HEATMAP ════════════════════════ */
-.hmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.hcell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .15s}
-.hcell:hover{transform:scale(1.2)}
-.h0{background:var(--s3)} .h1{background:rgba(200,255,0,.22)} .h2{background:rgba(200,255,0,.44)} .h3{background:rgba(200,255,0,.66)} .h4{background:rgba(200,255,0,.88)}
 
 /* ══════════════════════════ CLOCK WIDGET ════════════════════ */
 .clock-wgt{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:22px;text-align:center}
@@ -614,6 +609,14 @@ const fmt=ts=>{if(!ts)return'—';return new Date(typeof ts==='number'?ts:ts).to
 const fmtT=ts=>{if(!ts)return'—';return new Date(typeof ts==='number'?ts:ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
 const fmtDT=ts=>{if(!ts)return'—';const d=new Date(typeof ts==='number'?ts:ts);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
 const ini=n=>{if(!n)return'?';return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)};
+function normType(t){
+  if(!t)return'';
+  let s=t.includes('.')?t.split('.').pop():t;
+  s=s.toLowerCase().replace(/_([a-z])/g,(m,c)=>c.toUpperCase());
+  if(s==='clockin')return'clockIn'; if(s==='clockout')return'clockOut';
+  if(s==='breakstart')return'breakStart'; if(s==='breakend')return'breakEnd';
+  return s;
+}
 function toast(msg,type='in'){
   const c=$('toasts'),t=document.createElement('div');
   const ico={ok:'✓',er:'✕',in:'ℹ'};
@@ -792,16 +795,10 @@ async function pgAdminDash(c){
       <div id="adash-feed" style="max-height:320px;overflow-y:auto"></div>
     </div>
   </div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch"><span class="ct">Mood Heatmap — Last 28 Days</span></div>
-      <div id="adash-heat"></div>
-    </div>
     <div class="card">
       <div class="ch"><span class="ct">Today's Attendance Split</span></div>
       <div class="cw"><canvas id="adash-donut"></canvas></div>
-    </div>
-  </div>`;
+    </div>`;
   loadAdminDash();
 }
 function greet(){const h=new Date().getHours();return h<12?'morning':h<17?'afternoon':'evening'}
@@ -813,8 +810,8 @@ async function loadAdminDash(){
   ]);
   const latestStatus={};
   (att||[]).sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{latestStatus[r.user_id]=r});
-  const online=Object.values(latestStatus).filter(r=>r.type==='clockIn'||r.type==='breakEnd').length;
-  const onBreak=Object.values(latestStatus).filter(r=>r.type==='breakStart').length;
+  const online=Object.values(latestStatus).filter(r=>{const t=normType(r.type);return t==='clockIn'||t==='breakEnd'}).length;
+  const onBreak=Object.values(latestStatus).filter(r=>normType(r.type)==='breakStart').length;
   const total=profs?.length||0;
   const pendingAccess=(profs||[]).filter(p=>p.status==='pending').length;
   const el=$('adash-stats');
@@ -831,7 +828,8 @@ async function loadAdminDash(){
     const pm={}; (profs||[]).forEach(p=>pm[p.id]=p);
     lg.innerHTML=(profs||[]).slice(0,16).map(p=>{
       const r=latestStatus[p.id];
-      const st=r?.type==='clockIn'||r?.type==='breakEnd'?'online':r?.type==='breakStart'?'break':'offline';
+      const nt=normType(r?.type);
+      const st=nt==='clockIn'||nt==='breakEnd'?'online':nt==='breakStart'?'break':'offline';
       const lbl={'online':'ONLINE','break':'BREAK','offline':'OFFLINE'}[st];
       const dc={'online':'g','break':'o','offline':'k'}[st];
       const lastTime=r?fmtT(r.timestamp):'';
@@ -854,7 +852,7 @@ async function loadAdminDash(){
     const ti={clockIn:{d:'g',l:'Clocked In'},clockOut:{d:'r',l:'Clocked Out'},breakStart:{d:'o',l:'Break'},breakEnd:{d:'b',l:'Resumed'}};
     if(!recent.length){empty(feed,'No activity today','📋');return}
     feed.innerHTML=recent.map(r=>{
-      const q=ti[r.type]||{d:'k',l:r.type};
+      const q=ti[normType(r.type)]||{d:'k',l:r.type};
       return`<div class="act-item"><div class="act-dot ${q.d}"></div><div class="act-c">
         <div class="act-t"><strong>${pm[r.user_id]?.name||'Unknown'}</strong> ${q.l}</div>
         <div class="act-ts">${fmtDT(r.timestamp)}</div>
@@ -862,15 +860,6 @@ async function loadAdminDash(){
     }).join('');
   }
 
-  // Heatmap
-  const hm=$('adash-heat');
-  if(hm){
-    const{data:mood}=await db.from('attendance_records').select('timestamp,mood').gte('timestamp',Date.now()-28*86400000);
-    const mbd={}; (mood||[]).forEach(r=>{const k=new Date(r.timestamp).toDateString();if(!mbd[k]){mbd[k]={t:0,c:0}} if(r.mood!=null){mbd[k].t+=r.mood;mbd[k].c++}});
-    let cells='';
-    for(let i=27;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toDateString();const avg=mbd[k]?.c?mbd[k].t/mbd[k].c:0;const h=avg>4?4:avg>3?3:avg>2?2:avg>0?1:0;cells+=`<div class="hcell h${h}" title="${d.toLocaleDateString()} — Mood ${avg?avg.toFixed(1):'N/A'}"></div>`}
-    hm.innerHTML=`<div class="hmap">${cells}</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:10px;color:var(--t3)"><span>Low</span>${[0,1,2,3,4].map(h=>`<div class="hcell h${h}" style="width:12px;height:12px"></div>`).join('')}<span>High Mood</span></div>`;
-  }
 
   // Donut
   const ctx=document.getElementById('adash-donut');
@@ -916,8 +905,8 @@ async function loadLiveMonitor(){
   const s={};
   [...(att||[])].reverse().forEach(r=>{s[r.user_id]=r});
   liveData.status=s;
-  const online=Object.values(s).filter(r=>r.type==='clockIn'||r.type==='breakEnd').length;
-  const onBreak=Object.values(s).filter(r=>r.type==='breakStart').length;
+  const online=Object.values(s).filter(r=>{const t=normType(r.type);return t==='clockIn'||t==='breakEnd'}).length;
+  const onBreak=Object.values(s).filter(r=>normType(r.type)==='breakStart').length;
   const total=profs?.length||0;
   const ls=$('live-stats');
   if(ls)ls.innerHTML=`
@@ -932,15 +921,16 @@ async function loadLiveMonitor(){
     const pm={};(profs||[]).forEach(p=>pm[p.id]=p);
     const ti={clockIn:{d:'g',l:'🟢 Clocked In'},clockOut:{d:'r',l:'⭘ Clocked Out'},breakStart:{d:'o',l:'☕ Break Start'},breakEnd:{d:'b',l:'▶ Resumed'}};
     tl.innerHTML=(att||[]).map(r=>{
-      const q=ti[r.type]||{d:'k',l:r.type};
+      const nt=normType(r.type);
+      const q=ti[nt]||{d:'k',l:r.type};
       return`<div class="act-item">
         <div class="act-dot ${q.d}"></div>
         <div class="act-c">
           <div class="act-t" style="display:flex;align-items:center;gap:8px">
-            <strong>${pm[r.user_id]?.name||'Unknown'}</strong>${q.l}
+            <strong>${pm[r.user_id]?.name||'Unknown'}</strong> ${q.l}
             ${pm[r.user_id]?.department?`<span class="b bk">${pm[r.user_id].department}</span>`:''}
           </div>
-          <div class="act-ts">${fmtDT(r.timestamp)}${r.mood?` · Mood ${r.mood}/5`:''}</div>
+          <div class="act-ts">${fmtDT(r.timestamp)}</div>
         </div>
       </div>`;
     }).join('')||`<div class="empty"><div class="empty-t">No activity recorded today</div></div>`;
@@ -960,7 +950,8 @@ function renderLiveGrid(){
   }
   grid.innerHTML=emps.map(p=>{
     const r=liveData.status[p.id];
-    const st=r?.type==='clockIn'||r?.type==='breakEnd'?'online':r?.type==='breakStart'?'break':'offline';
+    const nt=normType(r?.type);
+    const st=nt==='clockIn'||nt==='breakEnd'?'online':nt==='breakStart'?'break':'offline';
     const lbl={'online':'ONLINE','break':'ON BREAK','offline':'OFFLINE'}[st];
     const dc={'online':'g','break':'o','offline':'k'}[st];
     return`<div class="mon-card ${st}">
