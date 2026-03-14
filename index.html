@@ -1234,16 +1234,21 @@ async function loadTaskPanel(type){
   } else if(type==='tracker'){
     loadTracker($('tp-tracker'));
   } else {
-    const[{data:m}, {data:d}]=await Promise.all([
-      db.from('user_monthly_tasks').select('*, monthly_tasks(title), profiles(name,email)').order('created_at',{ascending:false}),
-      db.from('tasks').select('*, profiles:assigned_to(name,email)').neq('task_type','personal').filter('admin_assessment','eq','Review').order('created_at',{ascending:false})
+    panel.innerHTML='<div class="ld"><div class="spin"></div></div>';
+    const [ {data:profs}, {data:m_tasks}, {data:u_monthly}, {data:tasks} ] = await Promise.all([
+      db.from('profiles').select('id,name,email'),
+      db.from('monthly_tasks').select('id,title'),
+      db.from('user_monthly_tasks').select('*').order('created_at',{ascending:false}),
+      db.from('tasks').select('*').neq('task_type','personal').filter('admin_assessment','eq','Review').order('created_at',{ascending:false})
     ]);
+    const pm = {}; (profs||[]).forEach(p=>pm[p.id]=p);
+    const mm = {}; (m_tasks||[]).forEach(x=>mm[x.id]=x);
+
     const submissions = [
-      ...(m||[]).map(x=>({...x, type:'Monthly', title: x.monthly_tasks?.title})),
-      ...(d||[]).map(x=>({...x, type: x.task_type.toUpperCase(), title: x.title}))
+      ...(u_monthly||[]).map(x=>({...x, type:'Monthly', title: mm[x.monthly_task_id]?.title, profiles: pm[x.user_id]})),
+      ...(tasks||[]).map(x=>({...x, type: x.task_type.toUpperCase(), title: x.title, profiles: pm[x.assigned_to]}))
     ].sort((a,b)=>new Date(b.created_at || b.timestamp)-new Date(a.created_at || a.timestamp));
 
-    const panel=$('tp-review');
     if(!submissions.length){empty(panel,'No submissions yet','📋');return}
     const sc={Completed:'bg','In Progress':'bb',Pending:'bo','On Hold':'bk',Review:'bp'};
     const ac={accepted:'bg',rejected:'br',pending:'bo',Review:'bp'};
@@ -1271,17 +1276,20 @@ async function assessUnifiedTask(id,table,status){
 async function loadTracker(panel){
   panel.innerHTML='<div class="ld"><div class="spin"></div></div>';
   const res = await Promise.all([
-    db.from('monthly_tasks').select('*'),
-    db.from('user_monthly_tasks').select('*, profiles(name,email), monthly_tasks(title)'),
-    db.from('tasks').select('*, profiles:assigned_to(name,email)').neq('task_type','personal')
+    db.from('monthly_tasks').select('id,title'),
+    db.from('user_monthly_tasks').select('*'),
+    db.from('tasks').select('*').neq('task_type','personal'),
+    db.from('profiles').select('id,name,email')
   ]);
-  console.log('Tracker Data Raw:', res);
-  const [{data:m},{data:mt},{data:d}] = res;
-  console.log('Parsed - Monthly:', m, 'UserMonthly:', mt, 'Tasks:', d);
+  const [{data:m},{data:mt},{data:d}, {data:profs}] = res;
+  
+  const pm = {}; (profs||[]).forEach(p=>pm[p.id]=p);
+  const mm = {}; (m||[]).forEach(x=>mm[x.id]=x);
+
   const now=Date.now();
   const tasks=[];
-  (mt||[]).forEach(t=>tasks.push({...t,type:'Monthly',title:t.monthly_tasks?.title, deadline:t.deadline_time, date:null}));
-  (d||[]).forEach(t=>tasks.push({...t,type:t.task_type.toUpperCase(), deadline:t.deadline_time, date:t.specific_date}));
+  (mt||[]).forEach(t=>tasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time, date:null}));
+  (d||[]).forEach(t=>tasks.push({...t,type:t.task_type.toUpperCase(), profiles: pm[t.assigned_to], deadline:t.deadline_time, date:t.specific_date}));
 
   const overdue=[];
   const ongoing=[];
@@ -1294,8 +1302,8 @@ async function loadTracker(panel){
     if(t.date || t.deadline){
       let dt=t.date?new Date(t.date):new Date();
       if(t.deadline){
-        const[h,m]=t.deadline.split(':');
-        dt.setHours(parseInt(h)||0,parseInt(m)||0,0,0);
+        const[h,m_time]=t.deadline.split(':');
+        dt.setHours(parseInt(h)||0,parseInt(m_time)||0,0,0);
       } else {
         dt.setHours(23,59,59,999);
       }
@@ -1307,10 +1315,10 @@ async function loadTracker(panel){
     else pending.push(t);
   });
 
-  const renderSection=(t,l,c)=>`
-    <div class="ch" style="margin-top:10px"><span class="ct" style="color:var(--${c})">${l} (${t.length})</span></div>
-    <div style="display:grid;gap:8px">${t.length?t.map(x=>`<div class="tcard" style="border-left:3px solid var(--${c})">
-      <div class="tc-t">${x.title}</div>
+  const renderSection=(t_list,l,c)=>`
+    <div class="ch" style="margin-top:10px"><span class="ct" style="color:var(--${c})">${l} (${t_list.length})</span></div>
+    <div style="display:grid;gap:8px">${t_list.length?t_list.map(x=>`<div class="tcard" style="border-left:3px solid var(--${c})">
+      <div class="tc-t">${x.title || 'Untitled Task'}</div>
       <div class="tc-m">
         <span class="b bl">${x.type}</span>
         <span>👤 ${x.profiles?.name||'Everyone'}</span>
@@ -1322,7 +1330,7 @@ async function loadTracker(panel){
   const isPast=(x)=>{
     if(!x.date && !x.deadline) return false;
     let dt=x.date?new Date(x.date):new Date();
-    if(x.deadline) { const[h,m]=x.deadline.split(':'); dt.setHours(parseInt(h),parseInt(m)); }
+    if(x.deadline) { const[h,min]=x.deadline.split(':'); dt.setHours(parseInt(h),parseInt(min)); }
     else dt.setHours(23,59);
     return dt.getTime()<now;
   };
@@ -2118,8 +2126,13 @@ async function loadEmpTaskPanel(type){
       <button class="bic" style="color:var(--red);flex-shrink:0" onclick="deletePersonalTask('${t.id}')">🗑</button>
     </div>`).join('')}`;
   } else {
-    const{data}=await db.from('user_monthly_tasks').select('*, monthly_tasks(*)').eq('user_id',U.id).order('created_at',{ascending:false});
-    renderEmpMonthlyList($('et-monthly'),data);
+    const[{data:mt}, {data:m_tasks}]=await Promise.all([
+      db.from('user_monthly_tasks').select('*').eq('user_id',U.id).order('created_at',{ascending:false}),
+      db.from('monthly_tasks').select('*')
+    ]);
+    const mm = {}; (m_tasks||[]).forEach(x=>mm[x.id]=x);
+    const joined = (mt||[]).map(x=>({...x, monthly_tasks: mm[x.monthly_task_id]}));
+    renderEmpMonthlyList($('et-monthly'),joined);
   }
 }
 function renderEmpTaskList(panel,data,type){
