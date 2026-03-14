@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BRAAND School Plus v1.0.1</title>
-<!-- v1.0.1 - Force Update -->
+<title>BRAAND School Plus v1.0.2</title>
+<!-- v1.0.2 - Fix Schema Mismatch -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1240,14 +1240,14 @@ async function loadTaskPanel(type){
       db.from('profiles').select('id,name,email'),
       db.from('monthly_tasks').select('id,title'),
       db.from('user_monthly_tasks').select('*').order('created_at',{ascending:false}),
-      db.from('tasks').select('*').neq('task_type','personal').filter('admin_assessment','eq','Review').order('created_at',{ascending:false})
+      db.from('tasks').select('*').order('created_at',{ascending:false})
     ]);
     const pm = {}; (profs||[]).forEach(p=>pm[p.id]=p);
     const mm = {}; (m_tasks||[]).forEach(x=>mm[x.id]=x);
 
     const submissions = [
       ...(u_monthly||[]).map(x=>({...x, type:'Monthly', title: mm[x.monthly_task_id]?.title, profiles: pm[x.user_id]})),
-      ...(tasks||[]).map(x=>({...x, type: x.task_type.toUpperCase(), title: x.title, profiles: pm[x.assigned_to]}))
+      ...(tasks||[]).filter(x=>x.admin_assessment==='Review').map(x=>({...x, type: 'TASK', title: x.title, profiles: pm[x.user_id]}))
     ].sort((a,b)=>new Date(b.created_at || b.timestamp)-new Date(a.created_at || a.timestamp));
 
     if(!submissions.length){empty(panel,'No submissions yet','📋');return}
@@ -1279,7 +1279,7 @@ async function loadTracker(panel){
   const res = await Promise.all([
     db.from('monthly_tasks').select('id,title'),
     db.from('user_monthly_tasks').select('*'),
-    db.from('tasks').select('*').neq('task_type','personal'),
+    db.from('tasks').select('*'),
     db.from('profiles').select('id,name,email')
   ]);
   const [{data:m},{data:mt},{data:d}, {data:profs}] = res;
@@ -1289,8 +1289,8 @@ async function loadTracker(panel){
 
   const now=Date.now();
   const tasks=[];
-  (mt||[]).forEach(t=>tasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time, date:null}));
-  (d||[]).forEach(t=>tasks.push({...t,type:t.task_type.toUpperCase(), profiles: pm[t.assigned_to], deadline:t.deadline_time, date:t.specific_date}));
+  (mt||[]).forEach(t=>tasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time || null, date:null}));
+  (d||[]).forEach(t=>tasks.push({...t,type:'TASK', profiles: pm[t.user_id], deadline:t.end_time || null, date:t.task_date}));
 
   const overdue=[];
   const ongoing=[];
