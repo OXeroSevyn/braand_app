@@ -89,7 +89,6 @@ class _EmployeeViewState extends State<EmployeeView> {
       if (mounted && _currentIndex != 3) {
         // Only check when not on Messages tab (index 3 now)
         try {
-          HapticFeedback.mediumImpact();
           final count = await _supabaseService.getUnreadCount(widget.user.id);
           if (mounted) {
             setState(() {
