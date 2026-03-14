@@ -7,6 +7,7 @@
 <!-- v1.0.7 - Replaced Kanban with Task Pulse UI Hub -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -324,38 +325,41 @@ a{color:inherit;text-decoration:none}
 
 /* ══════════════════════════ TASK PULSE ══════════════════════════ */
 .pulse-hub { display: flex; flex-direction: column; gap: 20px; }
-.pulse-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 10; margin-bottom: 10px; }
-.pulse-tab { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--s2); color: var(--t3); transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
-.pulse-tab:hover { border-color: var(--t4); }
-.pulse-tab.active { background: var(--p1); color: #fff; border-color: var(--p1); }
-.pulse-tab .count { background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 10px; font-size: 10px; }
+.pulse-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 10; margin-bottom: 15px; }
+.pulse-tab { padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--s2); color: var(--t2); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.pulse-tab:hover { border-color: var(--t3); background: var(--s3); color: var(--text); }
+.pulse-tab.active { background: var(--lime); color: #000; border-color: var(--lime); box-shadow: 0 4px 15px rgba(200, 255, 0, 0.2); }
+.pulse-tab .count { background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 8px; font-size: 11px; opacity: 0.8; }
+.pulse-tab.active .count { background: rgba(0,0,0,0.2); }
 
-.pulse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; }
-.pc-card { background: var(--s1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all 0.2s; position: relative; overflow: hidden; }
-.pc-card:hover { border-color: var(--p1); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-.pc-card.archived { opacity: 0.7; }
+.pulse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+.pc-card { background: var(--s1); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 15px; transition: all 0.3s; position: relative; overflow: hidden; }
+.pc-card:hover { border-color: var(--lime); transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+.pc-card.archived { opacity: 0.6; filter: grayscale(50%); }
 
 .pc-glow { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
-.pc-glow.pending { background: var(--t4); }
-.pc-glow.ongoing { background: var(--p1); box-shadow: 2px 0 10px rgba(var(--p1-rgb), 0.3); }
-.pc-glow.review { background: var(--orange); }
-.pc-glow.done { background: var(--lime); }
-.pc-glow.trash { background: var(--red); }
+.pc-glow.pending { background: var(--t3); }
+.pc-glow.ongoing { background: var(--blue); box-shadow: 4px 0 15px var(--blue-a); }
+.pc-glow.review { background: var(--orange); box-shadow: 4px 0 15px var(--orange-a); }
+.pc-glow.done { background: var(--lime); box-shadow: 4px 0 15px var(--lime-a18); }
+.pc-glow.trash { background: var(--red); box-shadow: 4px 0 15px var(--red-a); }
 
-.pc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.pc-title { font-weight: 700; font-size: 15px; line-height: 1.4; color: var(--t1); }
-.pc-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--t3); align-items: center; }
-.pc-tag { padding: 2px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; font-size: 9px; }
-.pc-tag.monthly { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.pc-tag.task { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+.pc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.pc-title { font-weight: 700; font-size: 16px; line-height: 1.4; color: var(--text); }
+.pc-tag { padding: 4px 10px; border-radius: 6px; font-weight: 800; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+.pc-tag.monthly { background: var(--blue-a); color: var(--blue); }
+.pc-tag.standard { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
 
-.pc-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
-.pc-btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
-.pc-btn.p { background: var(--p1); color: #fff; }
-.pc-btn.p:hover { background: var(--p2); }
-.pc-btn.s { background: var(--s2); color: var(--t2); }
-.pc-btn.s:hover { background: var(--s3); }
-.pc-btn.r { background: rgba(255,68,68,0.1); color: var(--red); }
+.pc-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--t2); align-items: center; }
+.pc-meta span { display: flex; align-items: center; gap: 5px; }
+
+.pc-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+.pc-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+.pc-btn.p { background: var(--lime); color: #000; }
+.pc-btn.p:hover { background: #fff; transform: scale(1.05); }
+.pc-btn.s { background: var(--s3); color: var(--text); border: 1px solid var(--border2); }
+.pc-btn.s:hover { background: var(--s4); }
+.pc-btn.r { background: var(--red-a); color: var(--red); }
 .pc-btn.r:hover { background: var(--red); color: #fff; }
 
 @media (max-width: 600px) { .pulse-grid { grid-template-columns: 1fr; } }
