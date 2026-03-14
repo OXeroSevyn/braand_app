@@ -1312,8 +1312,8 @@ async function loadTracker(panel){
     tasks.forEach(t=>{
       if(t.is_archived) cols.trash.items.push(t);
       else if(t.admin_assessment==='accepted'||t.status==='Completed') cols.done.items.push(t);
-      else if(t.admin_assessment==='Review'||t.status==='Review') cols.review.items.push(t);
-      else if(t.status==='In Progress' || t.admin_assessment==='pending review') cols.progress.items.push(t);
+      else if(t.admin_assessment==='review'||t.status==='Review') cols.review.items.push(t);
+      else if(t.status==='In Progress' || t.admin_assessment==='in-progress') cols.progress.items.push(t);
       else cols.todo.items.push(t);
     });
 
@@ -1372,8 +1372,8 @@ async function handleKbDrop(e, colId){
   
   const statusMap = {
     todo: { status: 'Pending', assessment: 'pending' },
-    progress: { status: 'In Progress', assessment: 'pending review' },
-    review: { status: 'Review', assessment: 'Review' },
+    progress: { status: 'In Progress', assessment: 'in-progress' },
+    review: { status: 'Review', assessment: 'review' },
     done: { status: 'Completed', assessment: 'accepted' },
     trash: { archived: true }
   };
