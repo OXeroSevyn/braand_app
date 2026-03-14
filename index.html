@@ -323,8 +323,10 @@ a{color:inherit;text-decoration:none}
 .cw-md{position:relative;height:250px}
 
 /* ══════════════════════════ KANBAN ══════════════════════════ */
-.kanban-board { display: grid; grid-template-columns: repeat(4, 1fr); gap:15px; margin-top:15px; align-items: flex-start; }
+.kanban-board { display: grid; grid-template-columns: repeat(5, 1fr); gap:15px; margin-top:15px; align-items: flex-start; }
 .kb-col { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rl); min-height: 500px; display: flex; flex-direction: column; }
+.kb-col.trash { background: rgba(255, 68, 68, 0.05); border-color: rgba(255, 68, 68, 0.2); }
+.trash .kb-h { color: var(--red); }
 .kb-h { padding: 12px 15px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .kb-cnt { padding: 10px; flex: 1; min-height: 100px; }
 .kb-card { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: grab; transition: transform 0.1s, box-shadow 0.1s; position: relative; }
@@ -334,6 +336,8 @@ a{color:inherit;text-decoration:none}
 .kb-meta { font-size: 11px; color: var(--t3); display: flex; flex-direction: column; gap: 3px; }
 .kb-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; width: fit-content; text-transform: uppercase; }
 .kb-drop-over { background: var(--s3); border: 2px dashed var(--lime); }
+.trash.kb-drop-over { border-color: var(--red); background: rgba(255,68,68,0.1); }
+@media (max-width: 1400px) { .kanban-board { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 1024px) { .kanban-board { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .kanban-board { grid-template-columns: 1fr; } }
 .clock-wgt{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:22px;text-align:center}
@@ -1296,36 +1300,38 @@ async function loadTracker(panel){
   const renderKanban=(search='')=>{
     const s=search.toLowerCase();
     const tasks = allTasks.filter(t=> !s || ((t.title||'')+(t.profiles?.name||'')).toLowerCase().includes(s));
-    const now = Date.now();
 
     const cols = {
       todo: {t:'To Do', c:'bk', items:[]},
       progress: {t:'In Progress', c:'blue', items:[]},
       review: {t:'Review', c:'orange', items:[]},
-      done: {t:'Done', c:'green', items:[]}
+      done: {t:'Done', c:'green', items:[]},
+      trash: {t:'🗑 Trash', c:'red', items:[]}
     };
 
     tasks.forEach(t=>{
-      if(t.admin_assessment==='accepted'||t.status==='Completed') cols.done.items.push(t);
+      if(t.is_archived) cols.trash.items.push(t);
+      else if(t.admin_assessment==='accepted'||t.status==='Completed') cols.done.items.push(t);
       else if(t.admin_assessment==='Review'||t.status==='Review') cols.review.items.push(t);
-      else if(t.status==='In Progress') cols.progress.items.push(t);
+      else if(t.status==='In Progress' || t.admin_assessment==='pending review') cols.progress.items.push(t);
       else cols.todo.items.push(t);
     });
 
     const board = document.getElementById('kanban-board');
     if(!board)return;
     board.innerHTML = Object.entries(cols).map(([id, col])=>`
-      <div class="kb-col" ondragover="event.preventDefault(); this.classList.add('kb-drop-over')" ondragleave="this.classList.remove('kb-drop-over')" ondrop="handleKbDrop(event, '${id}')">
+      <div class="kb-col ${id==='trash'?'trash':''}" ondragover="event.preventDefault(); this.classList.add('kb-drop-over')" ondragleave="this.classList.remove('kb-drop-over')" ondrop="handleKbDrop(event, '${id}')">
         <div class="kb-h"><span>${col.t}</span><span class="b ${col.c}">${col.items.length}</span></div>
         <div class="kb-cnt" id="col-${id}">
           ${col.items.map(x=>{
-            const isOverdue = x.deadline && new Date().toTimeString() > x.deadline && x.status!=='Completed';
+            const isOverdue = x.deadline && new Date().toTimeString() > x.deadline && x.status!=='Completed' && x.admin_assessment!=='accepted';
             return `<div class="kb-card" draggable="true" ondragstart="handleKbDragStart(event, '${x.id}', '${x.type}')" id="card-${x.id}">
               <div class="kb-title">${x.title || 'Untitled'}</div>
               <div class="kb-meta">
                 <span class="kb-tag bl">${x.type}</span>
                 <span>👤 ${x.profiles?.name || 'Everyone'}</span>
                 ${x.deadline ? `<span style="color:${isOverdue?'var(--red)':'var(--t3)'}">⏰ ${x.deadline}</span>` : ''}
+                ${id==='trash' ? `<button class="btn btn-g btn-s" style="margin-top:8px" onclick="restoreTask('${x.id}', '${x.type}')">Restore</button>` : ''}
               </div>
             </div>`;
           }).join('')}
@@ -1348,6 +1354,13 @@ function handleKbDragStart(e, id, type){
   e.dataTransfer.setData('text/plain', id);
   e.target.classList.add('dragging');
 }
+async function restoreTask(id, type){
+  const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
+  toast('Restoring task...','in');
+  const {error} = await db.from(table).update({is_archived: false, admin_assessment:'pending', status:'Pending'}).eq('id', id);
+  if(error){toast('Error: '+error.message,'er');return}
+  toast('Task restored','ok'); loadTracker($('tp-tracker'));
+}
 async function handleKbDrop(e, colId){
   e.preventDefault();
   const el = e.currentTarget; el.classList.remove('kb-drop-over');
@@ -1355,28 +1368,34 @@ async function handleKbDrop(e, colId){
   
   const statusMap = {
     todo: { status: 'Pending', assessment: 'pending' },
-    progress: { status: 'In Progress', assessment: 'pending' },
+    progress: { status: 'In Progress', assessment: 'pending review' },
     review: { status: 'Review', assessment: 'Review' },
-    done: { status: 'Completed', assessment: 'accepted' }
+    done: { status: 'Completed', assessment: 'accepted' },
+    trash: { archived: true }
   };
   
   const target = statusMap[colId];
   const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
   
-  // Logic Fix: For 'TASK' type, the 'In Progress' state needs to be reflected 
-  // currently we only show it in Kanban if status is 'In Progress' or assessment is 'Review'.
-  // We need to update BOTH or ensure the mapping is consistent.
-  const updateData = type==='Monthly' 
-    ? { status: target.status } 
-    : { admin_assessment: target.assessment, status: target.status }; // Map both for consistency
-  
-  if(target.status==='Completed') updateData.completed_at = new Date().toISOString();
+  let updateData = {};
+  if(target.archived){
+    updateData = { is_archived: true };
+  } else {
+    // We update status for BOTH just to be safe and consistent, 
+    // though the 'status' column error on 'tasks' suggest we should only update what exists.
+    // Based on the error "Could not find status column of tasks", I will only update status for Monthly.
+    updateData = type==='Monthly' 
+      ? { status: target.status, is_archived: false } 
+      : { admin_assessment: target.assessment, is_archived: false };
+    
+    if(target.status==='Completed') updateData.completed_at = new Date().toISOString();
+  }
 
   toast('Updating status...','in');
   const {error} = await db.from(table).update(updateData).eq('id', id);
   if(error) { toast('Error: '+error.message, 'er'); return; }
   
-  toast('Task moved to '+colId, 'ok');
+  toast(target.archived ? 'Task archived' : 'Task moved to '+colId, 'ok');
   loadTracker($('tp-tracker'));
 }
 function renderTaskList(panel,data,table){
