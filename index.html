@@ -1230,25 +1230,39 @@ async function loadTaskPanel(type){
     const{data}=await db.from('tasks').select('*').eq('task_type','hourly').order('created_at',{ascending:false});
     renderTaskList($('tp-hourly'),data,'tasks');
   } else {
-    const{data}=await db.from('user_monthly_tasks').select('*, monthly_tasks(title), profiles(name,email)').order('created_at',{ascending:false});
+    const[{data:m}, {data:d}]=await Promise.all([
+      db.from('user_monthly_tasks').select('*, monthly_tasks(title), profiles(name,email)').order('created_at',{ascending:false}),
+      db.from('tasks').select('*, profiles:assigned_to(name,email)').neq('task_type','personal').filter('admin_assessment','eq','Review').order('created_at',{ascending:false})
+    ]);
+    const submissions = [
+      ...(m||[]).map(x=>({...x, type:'Monthly', title: x.monthly_tasks?.title})),
+      ...(d||[]).map(x=>({...x, type: x.task_type.toUpperCase(), title: x.title}))
+    ].sort((a,b)=>new Date(b.created_at || b.timestamp)-new Date(a.created_at || a.timestamp));
+
     const panel=$('tp-review');
-    if(!data?.length){empty(panel,'No submissions yet','📋');return}
+    if(!submissions.length){empty(panel,'No submissions yet','📋');return}
     const sc={Completed:'bg','In Progress':'bb',Pending:'bo','On Hold':'bk',Review:'bp'};
-    const ac={accepted:'bg',rejected:'br',pending:'bo'};
-    panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(s=>`<div class="tcard">
-      <div class="tc-t">${s.monthly_tasks?.title||'Task'}</div>
+    const ac={accepted:'bg',rejected:'br',pending:'bo',Review:'bp'};
+    panel.innerHTML=`<div style="display:grid;gap:10px">${submissions.map(s=>`<div class="tcard">
+      <div class="tc-t">${s.title||'Task'}</div>
       <div class="tc-m">
-        <span class="b ${sc[s.status]||'bk'}">${s.status}</span>
+        <span class="b bl">${s.type}</span>
+        <span class="b ${sc[s.status]||'bk'}">${s.status || 'Review'}</span>
         <span class="b ${ac[s.admin_assessment]||'bo'}">${s.admin_assessment||'pending'} review</span>
         <span>👤 ${s.profiles?.name||s.profiles?.email||'Unknown'}</span>
         ${s.completed_at?`<span style="font-family:var(--font-m);font-size:10px">✓ ${fmtDT(s.completed_at)}</span>`:''}
       </div>
-      ${s.admin_assessment==='pending'?`<div class="tc-acts">
-        <button class="btn btn-ok btn-s" onclick="assessTask('${s.id}','accepted')">✓ Accept</button>
-        <button class="btn btn-r btn-s" onclick="assessTask('${s.id}','rejected')">✕ Reject</button>
+      ${(s.admin_assessment==='pending' || s.admin_assessment==='Review')?`<div class="tc-acts">
+        <button class="btn btn-ok btn-s" onclick="assessUnifiedTask('${s.id}','${s.type==='Monthly'?'user_monthly_tasks':'tasks'}','accepted')">✓ Accept</button>
+        <button class="btn btn-r btn-s" onclick="assessUnifiedTask('${s.id}','${s.type==='Monthly'?'user_monthly_tasks':'tasks'}','rejected')">✕ Reject</button>
       </div>`:s.admin_assessment?`<div class="b ${s.admin_assessment==='accepted'?'bg':'br'}" style="width:fit-content">${s.admin_assessment==='accepted'?'✓ Accepted':'✕ Rejected'}</div>`:''}
     </div>`).join('')}`;
   }
+}
+async function assessUnifiedTask(id,table,status){
+  const{error}=await db.from(table).update({admin_assessment:status}).eq('id',id);
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast(`Task ${status}`,'ok');loadTaskPanel('review');
 }
 function renderTaskList(panel,data,table){
   if(!data?.length){empty(panel,'No tasks created','✓');return}
@@ -2052,7 +2066,15 @@ function renderEmpTaskList(panel,data,type){
       <span class="b ${ac[t.admin_assessment]||'bo'}">${t.admin_assessment||'pending review'}</span>
     </div>
     ${t.description?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">${t.description}</div>`:''}
+    <div class="tc-acts">
+      ${(!t.admin_assessment || t.admin_assessment === 'pending' || t.admin_assessment === 'pending review') ? `<button class="btn btn-ok btn-s" onclick="submitEmpTask('${t.id}','${type}')">✓ Mark Complete</button>` : ''}
+    </div>
   </div>`).join('')}`;
+}
+async function submitEmpTask(id,type){
+  const{error}=await db.from('tasks').update({admin_assessment:'Review'}).eq('id',id);
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Task submitted for review!','ok');loadEmpTaskPanel(type);
 }
 function renderEmpMonthlyList(panel,data){
   if(!data?.length){empty(panel,'No monthly tasks assigned','📋');return}
