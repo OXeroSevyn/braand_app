@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BRAAND School Plus v1.0.2</title>
-<!-- v1.0.2 - Fix Schema Mismatch -->
+<title>BRAAND School Plus v1.0.4</title>
+<!-- v1.0.4 - Organized Tracker & Completed Tasks -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1288,60 +1288,85 @@ async function loadTracker(panel){
   const mm = {}; (m||[]).forEach(x=>mm[x.id]=x);
 
   const now=Date.now();
-  const tasks=[];
-  (mt||[]).forEach(t=>tasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time || null, date:null}));
-  (d||[]).forEach(t=>tasks.push({...t,type:'TASK', profiles: pm[t.user_id], deadline:t.end_time || null, date:t.task_date}));
+  const allTasks=[];
+  (mt||[]).forEach(t=>allTasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time || null, date:null}));
+  (d||[]).forEach(t=>allTasks.push({...t,type:'TASK', profiles: pm[t.user_id], deadline:t.end_time || null, date:t.task_date}));
 
-  const overdue=[];
-  const ongoing=[];
-  const pending=[];
+  const renderTracker=(search='')=>{
+    const s=search.toLowerCase();
+    const tasks = allTasks.filter(t=>{
+      const txt = (t.title||'') + (t.profiles?.name||'') + (t.profiles?.email||'');
+      return !s || txt.toLowerCase().includes(s);
+    });
 
-  tasks.forEach(t=>{
-    let isOverdue=false;
-    if(t.admin_assessment==='accepted') return;
-    
-    if(t.date || t.deadline){
-      let dt=t.date?new Date(t.date):new Date();
-      if(t.deadline){
-        const[h,m_time]=t.deadline.split(':');
-        dt.setHours(parseInt(h)||0,parseInt(m_time)||0,0,0);
-      } else {
-        dt.setHours(23,59,59,999);
+    const overdue=[];
+    const ongoing=[];
+    const pending=[];
+    const completed=[];
+
+    tasks.forEach(t=>{
+      if(t.admin_assessment==='accepted') { completed.push(t); return; }
+      
+      let isOverdue=false;
+      if(t.date || t.deadline){
+        let dt=t.date?new Date(t.date):new Date();
+        if(t.deadline){
+          const[h,m_time]=t.deadline.split(':');
+          dt.setHours(parseInt(h)||0,parseInt(m_time)||0,0,0);
+        } else {
+          dt.setHours(23,59,59,999);
+        }
+        if(dt.getTime()<now) isOverdue=true;
       }
-      if(dt.getTime()<now && t.admin_assessment!=='accepted') isOverdue=true;
-    }
 
-    if(isOverdue) overdue.push(t);
-    else if(t.status==='In Progress' || t.admin_assessment==='Review' || t.admin_assessment==='pending review') ongoing.push(t);
-    else pending.push(t);
-  });
+      if(isOverdue) overdue.push(t);
+      else if(t.status==='In Progress' || t.admin_assessment==='Review' || t.admin_assessment==='pending review') ongoing.push(t);
+      else pending.push(t);
+    });
 
-  const renderSection=(t_list,l,c)=>`
-    <div class="ch" style="margin-top:10px"><span class="ct" style="color:var(--${c})">${l} (${t_list.length})</span></div>
-    <div style="display:grid;gap:8px">${t_list.length?t_list.map(x=>`<div class="tcard" style="border-left:3px solid var(--${c})">
-      <div class="tc-t">${x.title || 'Untitled Task'}</div>
-      <div class="tc-m">
-        <span class="b bl">${x.type}</span>
-        <span>👤 ${x.profiles?.name||'Everyone'}</span>
-        ${x.deadline?`<span style="color:var(--${isPast(x)?'red':'t3'})">⏰ ${x.deadline}</span>`:''}
-        ${x.date?`<span style="color:var(--${isPast(x)?'red':'t3'})">📅 ${fmt(x.date)}</span>`:''}
-      </div>
-    </div>`).join(''):`<div style="font-size:11px;color:var(--t3);padding:10px;text-align:center">No tasks in this category</div>`}</div>`;
+    const isPast=(x)=>{
+      if(!x.date && !x.deadline) return false;
+      let dt=x.date?new Date(x.date):new Date();
+      if(x.deadline) { const[h,min]=x.deadline.split(':'); dt.setHours(parseInt(h),parseInt(min)); }
+      else dt.setHours(23,59);
+      return dt.getTime()<now;
+    };
 
-  const isPast=(x)=>{
-    if(!x.date && !x.deadline) return false;
-    let dt=x.date?new Date(x.date):new Date();
-    if(x.deadline) { const[h,min]=x.deadline.split(':'); dt.setHours(parseInt(h),parseInt(min)); }
-    else dt.setHours(23,59);
-    return dt.getTime()<now;
+    const renderSec=(list,title,color,isOpen=false)=>`
+      <details class="tracker-sec" ${isOpen?'open':''}>
+        <summary class="ch" style="margin-top:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+          <span class="ct" style="color:var(--${color})">${title} (${list.length})</span>
+          <span class="bic" style="font-size:12px">▼</span>
+        </summary>
+        <div style="display:grid;gap:8px;padding:8px 0">
+          ${list.length?list.slice(0,100).map(x=>`<div class="tcard" style="border-left:3px solid var(--${color})">
+            <div class="tc-t">${x.title || 'Untitled Task'}</div>
+            <div class="tc-m">
+              <span class="b bl">${x.type}</span>
+              <span>👤 ${x.profiles?.name||'Everyone'}</span>
+              ${x.deadline?`<span style="color:var(--${isPast(x)?'red':'t3'})">⏰ ${x.deadline}</span>`:''}
+              ${x.date?`<span style="color:var(--${isPast(x)?'red':'t3'})">📅 ${fmt(x.date)}</span>`:''}
+            </div>
+          </div>`).join('')+(list.length>100?`<div class="empty-t" style="text-align:center;padding:10px;opacity:.6">Showing first 100 items... Use search to find specific tasks.</div>`:''):`<div style="font-size:11px;color:var(--t3);padding:10px;text-align:center">No tasks in this category</div>`}
+        </div>
+      </details>`;
+
+    const grid = $('tracker-grid');
+    if(grid) grid.innerHTML = `
+      ${renderSec(overdue,'Overdue Tasks','red', overdue.length>0)}
+      ${renderSec(ongoing,'Ongoing Activity','blue', overdue.length===0 && ongoing.length>0)}
+      ${renderSec(pending,'Upcoming / Pending','bk', overdue.length===0 && ongoing.length===0)}
+      ${renderSec(completed,'Completed Tasks','green')}
+    `;
   };
 
   panel.innerHTML=`
-    <div class="g1">
-      ${renderSection(overdue,'Overdue Tasks','red')}
-      ${renderSection(ongoing,'Ongoing Activity','blue')}
-      ${renderSection(pending,'Upcoming / Pending','bk')}
-    </div>`;
+    <div style="margin-bottom:15px;display:flex;gap:10px;position:sticky;top:0;background:var(--bg);z-index:5;padding:5px 0">
+      <input type="text" class="si" placeholder="Search tasks or employees..." style="flex:1" oninput="loadTracker.render(this.value)" id="tracker-search">
+    </div>
+    <div id="tracker-grid"></div>`;
+  loadTracker.render = renderTracker;
+  renderTracker();
 }
 function renderTaskList(panel,data,table){
   if(!data?.length){empty(panel,'No tasks created','✓');return}
