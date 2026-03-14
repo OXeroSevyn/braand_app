@@ -15,12 +15,10 @@ import '../services/office_hours_service.dart';
 import '../services/offline_sync_service.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/neo_card.dart';
-import '../widgets/neo_button.dart';
 import '../widgets/location_status_widget.dart';
-import '../widgets/mood_slider.dart';
-import '../widgets/streak_card.dart';
-import '../widgets/daily_focus.dart';
-import '../widgets/broadcast_stories.dart';
+import '../widgets/dock.dart';
+import '../widgets/rainbow_button.dart';
+import '../widgets/user_avatar.dart';
 import 'attendance_screen.dart';
 import 'employee_tasks_screen.dart';
 import 'messages_screen.dart';
@@ -29,6 +27,7 @@ import 'notice_board_screen.dart';
 import 'leave_screen.dart';
 import 'leaderboard_screen.dart';
 import '../services/notification_service.dart';
+import 'package:animations/animations.dart';
 
 class EmployeeView extends StatefulWidget {
   final User user;
@@ -53,7 +52,6 @@ class _EmployeeViewState extends State<EmployeeView> {
   List<String> _topTasks = [];
   String _latestNotice = '';
   List<Map<String, String>> _notices = [];
-  String? _selectedMood;
   String _status = 'IDLE';
   AttendanceType? _loadingType; // Track which button is loading
   int _pendingSyncCount = 0;
@@ -250,25 +248,6 @@ class _EmployeeViewState extends State<EmployeeView> {
       // Step 3: Verify location (handled inside service)
 
       // Step 4: Save attendance record with verification data
-      // Show Mood Slider if it's a CLOCK_IN
-      if (type == AttendanceType.CLOCK_IN && mounted) {
-        await showModalBottomSheet(
-          context: context,
-          backgroundColor: Colors.transparent,
-          isScrollControlled: true,
-          builder: (context) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: MoodSlider(
-              onMoodSelected: (mood) {
-                setState(() => _selectedMood = mood);
-              },
-            ),
-          ),
-        );
-      }
-
       // Get accurate location for the record
       Position? position;
       try {
@@ -292,7 +271,7 @@ class _EmployeeViewState extends State<EmployeeView> {
         biometricVerified: verificationResult.biometricVerified,
         photoUrl: verificationResult.photoUrl,
         verificationMethod: verificationResult.verificationMethod,
-        mood: _selectedMood,
+        mood: null,
       );
 
       await _supabaseService.saveRecord(record);
@@ -372,98 +351,159 @@ class _EmployeeViewState extends State<EmployeeView> {
     );
   }
 
+  Widget _buildHeader(User user) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0A0A0A) : Colors.white,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.brand, width: 2),
+            ),
+            child: UserAvatar(
+              avatarUrl: user.avatar,
+              name: user.name,
+              size: 56,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Welcome back,',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                Text(
+                  user.name,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.brand.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.brand.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.brand,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'ONLINE',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF8F9FA),
+      body: Stack(
         children: [
-          _buildDashboard(),
-          AttendanceScreen(user: widget.user),
-          EmployeeTasksScreen(user: widget.user),
-          MessagesScreen(user: widget.user),
-          _buildMenuScreen(), // New menu screen
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: isDark ? Colors.white : Colors.black,
-              width: 2,
+          PageTransitionSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: (child, primaryAnimation, secondaryAnimation) {
+              return FadeThroughTransition(
+                animation: primaryAnimation,
+                secondaryAnimation: secondaryAnimation,
+                fillColor: Colors.transparent,
+                child: child,
+              );
+            },
+            child: IndexedStack(
+              key: ValueKey<int>(_currentIndex),
+              index: _currentIndex,
+              children: [
+                _buildDashboard(),
+                AttendanceScreen(user: widget.user),
+                EmployeeTasksScreen(user: widget.user),
+                MessagesScreen(user: widget.user),
+                _buildMenuScreen(),
+              ],
             ),
           ),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          selectedItemColor: AppColors.brand,
-          unselectedItemColor: Colors.grey,
-          selectedLabelStyle: GoogleFonts.spaceMono(
-            fontWeight: FontWeight.bold,
-            fontSize: 10,
-          ),
-          unselectedLabelStyle: GoogleFonts.spaceMono(fontSize: 10),
-          type: BottomNavigationBarType.fixed,
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard),
-              label: 'HOME',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month),
-              label: 'ATTENDANCE',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.checklist),
-              label: 'TASKS',
-            ),
-            BottomNavigationBarItem(
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.chat),
-                  if (_unreadCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          _unreadCount > 9 ? '9+' : _unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 20,
+            child: Center(
+              child: Dock(
+                items: [
+                  DockIconData(
+                    icon: Icons.dashboard_rounded,
+                    label: 'Home',
+                    onTap: () => setState(() => _currentIndex = 0),
+                  ),
+                  DockIconData(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Attendance',
+                    onTap: () => setState(() => _currentIndex = 1),
+                  ),
+                  DockIconData(
+                    icon: Icons.assignment_rounded,
+                    label: 'Tasks',
+                    onTap: () => setState(() => _currentIndex = 2),
+                  ),
+                  DockIconData(
+                    icon: Icons.chat_bubble_rounded,
+                    label: 'Messages',
+                    onTap: () => setState(() => _currentIndex = 3),
+                  ),
+                  DockIconData(
+                    icon: Icons.menu_rounded,
+                    label: 'Menu',
+                    onTap: () => setState(() => _currentIndex = 4),
+                  ),
                 ],
+                currentIndex: _currentIndex,
               ),
-              label: 'MESSAGES',
             ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.menu),
-              label: 'MENU',
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -643,6 +683,7 @@ class _EmployeeViewState extends State<EmployeeView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildHeader(widget.user),
           ContinuousBanner(isDark: isDark),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -670,7 +711,7 @@ class _EmployeeViewState extends State<EmployeeView> {
                           width: 16,
                           height: 16,
                           child: _isSyncing
-                              ? const CircularProgressIndicator(
+                               ? const CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                       Colors.blue),
@@ -709,40 +750,13 @@ class _EmployeeViewState extends State<EmployeeView> {
                 _buildActions(),
                 const SizedBox(height: 24),
 
-                // Broadcast Stories
-                BroadcastStories(
-                  notices: _notices,
-                  onStoryTap: (notice) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            NoticeBoardScreen(user: widget.user),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Streak & Daily Focus
-                Row(
-                  children: [
-                    Expanded(child: StreakCard(streak: _streak)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                DailyFocus(
-                  topTasks: _topTasks,
-                  latestNotice: _latestNotice,
-                ),
-                const SizedBox(height: 24),
-
                 // Charts & AI
                 _buildChartsAndAI(),
                 const SizedBox(height: 24),
 
                 // Logs
                 _buildLogs(),
+                const SizedBox(height: 100), // Space for dock
               ],
             ),
           ),
@@ -773,10 +787,8 @@ class _EmployeeViewState extends State<EmployeeView> {
           Row(
             children: [
               Expanded(
-                child: NeoButton(
+                child: RainbowButton(
                   text: 'CLOCK IN',
-                  color: AppColors.brand, // Lime green
-                  textColor: Colors.black,
                   onPressed: _status == 'IDLE' || _status == 'COMPLETED'
                       ? () => _handleAttendance(AttendanceType.CLOCK_IN)
                       : null,
@@ -785,10 +797,9 @@ class _EmployeeViewState extends State<EmployeeView> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: NeoButton(
+                child: RainbowButton(
                   text: 'CLOCK OUT',
-                  color: Colors.red,
-                  textColor: Colors.white,
+                  isSecondary: true,
                   onPressed: _status == 'ACTIVE' || _status == 'ON_BREAK'
                       ? () => _handleAttendance(AttendanceType.CLOCK_OUT)
                       : null,
@@ -801,10 +812,9 @@ class _EmployeeViewState extends State<EmployeeView> {
           Row(
             children: [
               Expanded(
-                child: NeoButton(
+                child: RainbowButton(
                   text: 'BREAK START',
-                  color: Colors.purple,
-                  textColor: Colors.white,
+                  isPurple: true,
                   onPressed: _status == 'ACTIVE'
                       ? () => _handleAttendance(AttendanceType.BREAK_START)
                       : null,
@@ -813,10 +823,9 @@ class _EmployeeViewState extends State<EmployeeView> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: NeoButton(
+                child: RainbowButton(
                   text: 'BREAK END',
-                  color: Colors.amber,
-                  textColor: Colors.black,
+                  isAmber: true,
                   onPressed: _status == 'ON_BREAK'
                       ? () => _handleAttendance(AttendanceType.BREAK_END)
                       : null,

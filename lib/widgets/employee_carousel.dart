@@ -6,21 +6,21 @@ import '../constants.dart';
 import 'user_avatar.dart';
 import 'neo_card.dart';
 
-class EmployeeCarousel extends StatefulWidget {
+class EmployeeTable extends StatefulWidget {
   final List<User> employees;
   final String Function(String userId) getStatus;
 
-  const EmployeeCarousel({
+  const EmployeeTable({
     super.key,
     required this.employees,
     required this.getStatus,
   });
 
   @override
-  State<EmployeeCarousel> createState() => _EmployeeCarouselState();
+  State<EmployeeTable> createState() => _EmployeeTableState();
 }
 
-class _EmployeeCarouselState extends State<EmployeeCarousel> {
+class _EmployeeTableState extends State<EmployeeTable> {
   late PageController _pageController;
   int _currentPage = 0;
   Timer? _timer;
