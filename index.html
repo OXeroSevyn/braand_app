@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BRAAND School Plus v1.0.5</title>
-<!-- v1.0.5 - Removed Heatmap & Fixed Dashboard Stats -->
+<title>BRAAND School Plus v1.0.6</title>
+<!-- v1.0.6 - Added Interactive Kanban Board -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1362,7 +1362,13 @@ async function handleKbDrop(e, colId){
   
   const target = statusMap[colId];
   const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
-  const updateData = type==='Monthly' ? { status: target.status } : { admin_assessment: target.assessment };
+  
+  // Logic Fix: For 'TASK' type, the 'In Progress' state needs to be reflected 
+  // currently we only show it in Kanban if status is 'In Progress' or assessment is 'Review'.
+  // We need to update BOTH or ensure the mapping is consistent.
+  const updateData = type==='Monthly' 
+    ? { status: target.status } 
+    : { admin_assessment: target.assessment, status: target.status }; // Map both for consistency
   
   if(target.status==='Completed') updateData.completed_at = new Date().toISOString();
 
