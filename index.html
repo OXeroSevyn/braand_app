@@ -1,47 +1,2201 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRAAND School Plus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════ TOKENS ══════════════════════════ */
+:root{
+  --bg:#080808; --s1:#0f0f0f; --s2:#161616; --s3:#1d1d1d; --s4:#242424;
+  --border:#282828; --border2:#333; --border3:#404040;
+  --lime:#C8FF00; --lime2:#aad900; --lime-a10:rgba(200,255,0,.10); --lime-a18:rgba(200,255,0,.18);
+  --text:#efefef; --t2:#a8a8a8; --t3:#666; --t4:#3d3d3d;
+  --red:#ff4455; --red-a:#ff445520; --orange:#ff9500; --orange-a:#ff950018;
+  --blue:#4d9fff; --blue-a:#4d9fff18; --green:#00d97e; --green-a:#00d97e18;
+  --purple:#b088ff; --purple-a:#b088ff18;
+  --font-h:'Syne',sans-serif; --font-b:'DM Sans',sans-serif; --font-m:'JetBrains Mono',monospace;
+  --r:8px; --rl:12px; --rx:18px; --sh:0 4px 24px rgba(0,0,0,.6);
+}
+/* ══════════════════════════ LIGHT MODE ══════════════════════ */
+body.light{
+  --bg:#f0f2f5; --s1:#ffffff; --s2:#f6f7f9; --s3:#eceef2; --s4:#e4e7ec;
+  --border:#e2e5ea; --border2:#d4d8df; --border3:#bec3cc;
+  --lime:#5c8500; --lime2:#4d7000; --lime-a10:rgba(92,133,0,.08); --lime-a18:rgba(92,133,0,.14);
+  --text:#111827; --t2:#4b5563; --t3:#9ca3af; --t4:#d1d5db;
+  --red:#dc2626; --red-a:rgba(220,38,38,.08);
+  --orange:#ea580c; --orange-a:rgba(234,88,12,.08);
+  --blue:#2563eb; --blue-a:rgba(37,99,235,.08);
+  --green:#16a34a; --green-a:rgba(22,163,74,.08);
+  --purple:#7c3aed; --purple-a:rgba(124,58,237,.08);
+  --sh:0 2px 12px rgba(0,0,0,.08);
+}
+body.light ::-webkit-scrollbar-thumb{background:var(--border3)}
+body.light .sb{box-shadow:2px 0 8px rgba(0,0,0,.06)}
+body.light .topbar{box-shadow:0 1px 4px rgba(0,0,0,.06)}
+body.light .mover{background:rgba(0,0,0,.4)}
+body.light .mbox{box-shadow:0 20px 60px rgba(0,0,0,.15)}
+body.light .dt tbody tr:hover{background:var(--s3)}
+body.light .btn-g{color:var(--t2);border-color:var(--border2)}
+body.light .btn-g:hover{border-color:var(--lime);color:var(--lime)}
+body.light .toast{box-shadow:0 4px 16px rgba(0,0,0,.12)}
+body.light .ticker-item{color:var(--lime)}
+body.light .ticker-tag{background:rgba(92,133,0,.12);color:var(--lime)}
+body.light input::placeholder,body.light textarea::placeholder{color:var(--t3)}
+body.light .nav-i:hover{background:var(--s3)}
+body.light .nav-i.on{background:rgba(92,133,0,.1)}
+body.light .auth-h{color:var(--text)}
+body.light .auth-sub{color:var(--t2)}
+body.light #auth-screen::before{background:radial-gradient(ellipse 70% 40% at 50% -5%,rgba(92,133,0,.08),transparent)}
+body.light #auth-screen::after{color:var(--t4)}
+/* form elements in light */
+body.light .fg input,body.light .fg select,body.light .fg textarea,body.light .si,body.light .tb-search,body.light .fld input{background:var(--s2);border-color:var(--border2);color:var(--text)}
+body.light .fg select option{background:#fff;color:#111}
+body.light .fg input:focus,body.light .fg select:focus,body.light .fg textarea:focus,body.light .si:focus,body.light .fld input:focus{border-color:var(--lime)}
+/* cards/surfaces */
+body.light .stat.hi{background:rgba(92,133,0,.07);border-color:rgba(92,133,0,.25)}
+body.light .bic{background:var(--s2);border-color:var(--border2);color:var(--t2)}
+body.light .bic:hover{border-color:var(--lime);color:var(--lime)}
+body.light .ib{background:var(--s2);border-color:var(--border2);color:var(--t2)}
+body.light .ib:hover{border-color:var(--lime);color:var(--lime)}
+body.light .pb{background:var(--s2);border-color:var(--border2);color:var(--text)}
+body.light .pb:hover,body.light .pb.on{background:var(--lime);border-color:var(--lime);color:#fff}
+body.light .tog{background:var(--border2)}
+body.light .tog.on{background:var(--lime)}
+body.light .tabs{border-color:var(--border)}
+body.light .tab{color:var(--t3)}
+body.light .tab.on{color:var(--lime);border-bottom-color:var(--lime)}
+body.light .tab:hover{color:var(--text)}
+body.light .tcard{background:var(--s2);border-color:var(--border)}
+body.light .tcard:hover{border-color:var(--border3)}
+body.light .msg-b.sent{background:rgba(92,133,0,.12);border-color:rgba(92,133,0,.2)}
+body.light .msg-b.recv{background:var(--s2);border-color:var(--border)}
+body.light .chat-input{background:var(--s2);border-color:var(--border2);color:var(--text)}
+body.light .chat-input:focus{border-color:var(--lime)}
+body.light .conv-i:hover,body.light .conv-i.on{background:var(--s3)}
+body.light .mon-card{background:var(--s2);border-color:var(--border)}
+body.light .mon-card.online{border-color:rgba(22,163,74,.35)}
+body.light .mon-card.break{border-color:rgba(234,88,12,.35)}
+body.light .hcell.h1{background:rgba(92,133,0,.2)} body.light .hcell.h2{background:rgba(92,133,0,.4)} body.light .hcell.h3{background:rgba(92,133,0,.6)} body.light .hcell.h4{background:rgba(92,133,0,.85)}
+body.light .progress-fill{background:var(--lime)}
+body.light .req-card{background:var(--s2);border-color:rgba(92,133,0,.2)}
+body.light .notice-preview-ticker{background:rgba(0,0,0,.04) !important}
+/* badge adjustments for light */
+body.light .bl{background:rgba(92,133,0,.12);color:var(--lime);border-color:rgba(92,133,0,.25)}
+body.light .bk{background:rgba(0,0,0,.06);color:var(--t2);border-color:var(--border2)}
+body.light .ni-badge{background:var(--red)}
+body.light .conv-unrd{background:var(--lime);color:#000}
+body.light .logout-btn:hover{color:var(--red)}
+body.light .sb-urole{color:var(--lime)}
+/* clock widget */
+body.light .clock-wgt{background:var(--s1);border-color:var(--border)}
+body.light .ctime{color:var(--lime)}
+body.light .cstatus{border-color:var(--border2)}
+/* scroll bar */
+body.light ::-webkit-scrollbar-thumb{background:var(--border3)}
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+.sb,.main,.topbar,.card,.stat,.mbox,.dt th,.dt td,.tcard,.clock-wgt,.msg-b,.chat-area,.conv-list,.conv-i,.mon-card,.req-card,.tb-search,.ib,.bic,.tog,.tabs,.tab,.fg input,.fg select,.fg textarea,.si,.chat-input,.fld input{transition:background .2s,border-color .2s,color .2s,box-shadow .2s}
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+/* Theme toggle */
+.theme-tog{width:36px;height:20px;border-radius:10px;background:var(--border2);border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+body.light .theme-tog{background:var(--lime)}
+.theme-tog::before{content:'🌙';font-size:10px;position:absolute;left:3px;transition:opacity .2s}
+.theme-tog::after{content:'☀️';font-size:10px;position:absolute;right:3px;transition:opacity .2s;opacity:0}
+body.light .theme-tog::before{opacity:0}
+body.light .theme-tog::after{opacity:1}
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="/braand_app/">
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .2s,color .2s}
+input,select,textarea,button{font-family:var(--font-b);font-size:14px;color:inherit}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px}
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description"
-    content="BRAANDINS - Workforce Management System. Employee attendance, task management, and admin reporting.">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="google-signin-client_id"
-    content="222870540094-hmvpa91ns7ufk8ku0intt6ettbbajtn3.apps.googleusercontent.com">
+/* ══════════════════════════ AUTH ════════════════════════════ */
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);position:relative}
+#auth-screen::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 40% at 50% -5%,rgba(200,255,0,.06),transparent)}
+#auth-screen::after{content:'BRAAND SCHOOL +';position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:var(--font-m);font-size:10px;color:var(--t4);letter-spacing:3px}
+.auth-wrap{width:100%;max-width:400px;padding:20px;z-index:1}
+.auth-mark{font-family:var(--font-h);font-size:13px;font-weight:800;color:var(--lime);letter-spacing:1px;margin-bottom:4px;font-variant:small-caps}
+.auth-tagline{font-family:var(--font-m);font-size:10px;color:var(--t4);letter-spacing:2px;margin-bottom:40px;text-transform:uppercase}
+.auth-h{font-family:var(--font-h);font-size:30px;font-weight:800;line-height:1.1;margin-bottom:6px;letter-spacing:-.5px}
+.auth-sub{font-size:13px;color:var(--t2);margin-bottom:28px}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-family:var(--font-m);font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
+.fld input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:12px 14px;color:var(--text);outline:none;transition:border-color .15s}
+.fld input:focus{border-color:var(--lime)}
+.auth-btn{width:100%;padding:14px;background:var(--lime);color:#000;font-family:var(--font-h);font-size:14px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;margin-top:6px;letter-spacing:.5px;transition:all .15s}
+.auth-btn:hover{background:var(--lime2);transform:translateY(-1px)}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.auth-err{background:var(--red-a);border:1px solid rgba(255,68,85,.3);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none}
 
-  <meta name="theme-color" content="#0175C2">
+/* ══════════════════════════ SHELL ═══════════════════════════ */
+#app{display:none;height:100vh;overflow:hidden}
+.shell{display:flex;height:100vh}
 
-  <!-- iOS meta tags & icons -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BRAANDINS">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+/* ══════════════════════════ SIDEBAR ════════════════════════ */
+.sb{width:220px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s;overflow:hidden;z-index:100}
+.sb.mini{width:54px}
+.sb-top{padding:16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;min-height:58px}
+.sb-logo{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--lime);white-space:nowrap;flex:1;overflow:hidden}
+.sb-tog{background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;flex-shrink:0;padding:4px;border-radius:4px;transition:color .15s;display:flex;align-items:center;justify-content:center;width:24px;height:24px}
+.sb-tog:hover{color:var(--text)}
+.sb-user{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;min-height:54px;overflow:hidden}
+.sb-av{width:30px;height:30px;border-radius:50%;background:var(--lime-a10);border:1.5px solid rgba(200,255,0,.4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--lime);overflow:hidden}
+.sb-av img{width:100%;height:100%;object-fit:cover}
+.sb-uinfo{overflow:hidden;white-space:nowrap}
+.sb-uname{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.sb-urole{font-family:var(--font-m);font-size:10px;color:var(--lime);text-transform:uppercase;letter-spacing:.5px}
+.sb-nav{flex:1;overflow-y:auto;padding:6px 0}
+.sb-sec{padding:10px 14px 3px;font-family:var(--font-m);font-size:9px;color:var(--t4);letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden}
+.sb.mini .sb-sec{opacity:0;pointer-events:none}
+.sb.mini .sb-logo{display:none}
+.sb.mini .sb-uinfo{display:none}
+.nav-i{display:flex;align-items:center;padding:8px 14px;gap:10px;cursor:pointer;transition:all .15s;position:relative;white-space:nowrap;overflow:hidden;border-radius:0}
+.nav-i:hover{background:var(--s2)}
+.nav-i.on{background:var(--lime-a10);color:var(--lime)}
+.nav-i.on::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--lime);border-radius:0 2px 2px 0}
+.ni-icon{font-size:15px;flex-shrink:0;width:22px;display:flex;align-items:center;justify-content:center}
+.ni-lbl{font-size:12.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.ni-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:8px;padding:1px 5px;font-family:var(--font-m);flex-shrink:0}
+.sb-bot{padding:10px 14px;border-top:1px solid var(--border)}
+.logout-btn{display:flex;align-items:center;gap:10px;padding:7px;cursor:pointer;color:var(--t2);font-size:12px;border:none;background:none;width:100%;border-radius:var(--r);transition:color .15s}
+.logout-btn:hover{color:var(--red)}
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png" />
+/* ══════════════════════════ MAIN ════════════════════════════ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:54px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.tb-title{font-family:var(--font-h);font-size:15px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-search{display:flex;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:6px 11px;gap:7px;max-width:240px;flex:1}
+.tb-search input{background:none;border:none;outline:none;color:var(--text);font-size:12px;width:100%}
+.tb-search input::placeholder{color:var(--t4)}
+.tb-acts{display:flex;align-items:center;gap:6px}
+.ib{width:32px;height:32px;border-radius:var(--r);background:var(--s2);border:1px solid var(--border);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;position:relative}
+.ib:hover{border-color:var(--lime);color:var(--lime)}
+.ib .dot{position:absolute;top:5px;right:5px;width:6px;height:6px;background:var(--red);border-radius:50%;border:1px solid var(--s1)}
 
-  <title>BRAANDINS - Workforce Management</title>
-  <link rel="manifest" href="manifest.json">
+/* ══════════════════ NOTICE TICKER (employee) ════════════════ */
+.ticker-bar{background:var(--lime-a10);border-bottom:1px solid rgba(200,255,0,.2);padding:6px 0;overflow:hidden;flex-shrink:0;display:none}
+.ticker-bar.visible{display:block}
+.ticker-inner{display:flex;align-items:center;gap:0;white-space:nowrap;animation:ticker 35s linear infinite}
+.ticker-inner:hover{animation-play-state:paused}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-item{font-size:11.5px;font-weight:600;color:var(--lime);padding:0 32px;display:inline-flex;align-items:center;gap:8px}
+.ticker-item::before{content:'◆';font-size:7px;opacity:.6}
+.ticker-tag{font-family:var(--font-m);font-size:9px;background:rgba(200,255,0,.2);padding:1px 6px;border-radius:4px;color:var(--lime);letter-spacing:.5px}
+
+/* ══════════════════════════ CONTENT ═════════════════════════ */
+.pg-wrap{flex:1;overflow-y:auto;padding:22px}
+.pg{display:none}
+.pg.on{display:block}
+.pg-hd{margin-bottom:22px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.pg-t{font-family:var(--font-h);font-size:21px;font-weight:800;letter-spacing:-.3px;margin-bottom:3px}
+.pg-d{font-size:12px;color:var(--t2)}
+.pg-actions{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+
+/* ══════════════════════════ GRID ════════════════════════════ */
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+
+/* ══════════════════════════ CARDS ══════════════════════════ */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:18px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+.ct{font-family:var(--font-m);font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1px}
+.stat{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:18px 16px;position:relative;overflow:hidden;transition:border-color .15s}
+.stat:hover{border-color:var(--border3)}
+.stat.hi{border-color:rgba(200,255,0,.25);background:var(--lime-a10)}
+.stat-v{font-family:var(--font-h);font-size:34px;font-weight:800;line-height:1;margin-bottom:5px;letter-spacing:-1px}
+.stat-l{font-size:11px;color:var(--t2);font-weight:500;letter-spacing:.2px}
+.stat-ch{font-family:var(--font-m);font-size:10px;margin-top:7px}
+.stat-ch.up{color:var(--green)} .stat-ch.dn{color:var(--red)}
+.stat-ico{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.12}
+
+/* ══════════════════════════ TABLE ═══════════════════════════ */
+.tw{overflow-x:auto;border:1px solid var(--border);border-radius:var(--rl)}
+.dt{width:100%;border-collapse:collapse}
+.dt th{background:var(--s2);padding:10px 13px;text-align:left;font-family:var(--font-m);font-size:9.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+.dt td{padding:11px 13px;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tbody tr:hover{background:var(--s2)}
+.dt th:first-child,.dt td:first-child{padding-left:18px}
+.tt{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.si{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:7px 11px;color:var(--text);font-size:12px;outline:none;transition:border-color .15s}
+.si:focus{border-color:var(--lime)}
+.pag{display:flex;align-items:center;gap:6px;margin-top:12px;font-family:var(--font-m);font-size:11px;color:var(--t2)}
+.pb{width:26px;height:26px;border-radius:5px;background:var(--s2);border:1px solid var(--border);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s}
+.pb:hover,.pb.on{background:var(--lime);border-color:var(--lime);color:#000;font-weight:700}
+.pb:disabled{opacity:.3;cursor:not-allowed}
+
+/* ══════════════════════════ BADGES ═════════════════════════ */
+.b{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;font-family:var(--font-m);letter-spacing:.2px;white-space:nowrap}
+.bg{background:var(--green-a);color:var(--green);border:1px solid rgba(0,217,126,.2)}
+.br{background:var(--red-a);color:var(--red);border:1px solid rgba(255,68,85,.2)}
+.bo{background:var(--orange-a);color:var(--orange);border:1px solid rgba(255,149,0,.2)}
+.bb{background:var(--blue-a);color:var(--blue);border:1px solid rgba(77,159,255,.2)}
+.bp{background:var(--purple-a);color:var(--purple);border:1px solid rgba(176,136,255,.2)}
+.bl{background:var(--lime-a18);color:var(--lime);border:1px solid rgba(200,255,0,.25)}
+.bk{background:rgba(100,100,100,.12);color:var(--t2);border:1px solid var(--border2)}
+
+/* ══════════════════════════ BUTTONS ════════════════════════ */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:var(--r);border:none;cursor:pointer;font-size:12.5px;font-weight:600;transition:all .15s;font-family:var(--font-b);white-space:nowrap}
+.btn-l{background:var(--lime);color:#000}.btn-l:hover{background:var(--lime2);transform:translateY(-1px)}
+.btn-g{background:transparent;border:1px solid var(--border2);color:var(--t2)}.btn-g:hover{border-color:var(--lime);color:var(--lime)}
+.btn-r{background:var(--red-a);border:1px solid rgba(255,68,85,.25);color:var(--red)}.btn-r:hover{background:rgba(255,68,85,.25)}
+.btn-ok{background:var(--green-a);border:1px solid rgba(0,217,126,.25);color:var(--green)}.btn-ok:hover{background:rgba(0,217,126,.25)}
+.btn-s{padding:5px 11px;font-size:11px}
+.bic{width:30px;height:30px;padding:0;border-radius:var(--r);border:1px solid var(--border);background:var(--s2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s}
+.bic:hover{border-color:var(--lime);color:var(--lime)}
+
+/* ══════════════════════════ FORM ════════════════════════════ */
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-family:var(--font-m);font-size:9.5px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 11px;color:var(--text);outline:none;transition:border-color .15s;font-size:12.5px}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--lime)}
+.fg textarea{resize:vertical;min-height:72px;line-height:1.5}
+.fg select option{background:var(--s2)}
+
+/* ══════════════════════════ MODAL ═══════════════════════════ */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.mover.op{display:flex}
+.mbox{background:var(--s1);border:1px solid var(--border2);border-radius:var(--rx);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;animation:minIn .2s ease}
+@keyframes minIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
+.mh{display:flex;align-items:center;justify-content:space-between;padding:20px 22px 0}
+.mt{font-family:var(--font-h);font-size:16px;font-weight:700}
+.mc{background:none;border:none;color:var(--t3);cursor:pointer;font-size:18px;padding:4px;border-radius:4px;transition:color .15s}
+.mc:hover{color:var(--red)}
+.mb{padding:18px 22px}
+.mf{padding:0 22px 20px;display:flex;justify-content:flex-end;gap:8px}
+
+/* ══════════════════════════ TABS ════════════════════════════ */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px;gap:0;overflow-x:auto}
+.tab{padding:9px 16px;font-size:12.5px;font-weight:500;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab.on{color:var(--lime);border-bottom-color:var(--lime)}
+.tab:hover{color:var(--text)}
+.tp{display:none}
+.tp.on{display:block}
+
+/* ══════════════════════════ TOAST ═══════════════════════════ */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px}
+.toast{background:var(--s1);border:1px solid var(--border2);border-radius:var(--r);padding:11px 14px;font-size:12px;min-width:240px;animation:tIn .25s ease;display:flex;align-items:center;gap:8px;box-shadow:var(--sh)}
+.toast.ok{border-color:rgba(0,217,126,.35)}
+.toast.er{border-color:rgba(255,68,85,.35)}
+.toast.in{border-color:rgba(77,159,255,.35)}
+@keyframes tIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+
+/* ══════════════════ LIVE MONITOR GRID ═══════════════════════ */
+.monitor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:8px}
+.mon-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:13px;text-align:center;transition:border-color .2s;cursor:default}
+.mon-card.online{border-color:rgba(0,217,126,.3)}
+.mon-card.break{border-color:rgba(255,149,0,.3)}
+.mon-card.offline{opacity:.55}
+.mon-av{width:38px;height:38px;border-radius:50%;background:var(--s3);margin:0 auto 7px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:15px;font-weight:700;color:var(--lime)}
+.mon-name{font-size:11.5px;font-weight:600;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mon-dept{font-size:10px;color:var(--t3);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mon-pulse{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-m);font-size:9.5px;font-weight:600}
+.pulse-dot{width:5px;height:5px;border-radius:50%}
+.pulse-dot.g{background:var(--green);box-shadow:0 0 5px var(--green)}
+.pulse-dot.o{background:var(--orange)}
+.pulse-dot.k{background:var(--t4)}
+.mon-time{font-family:var(--font-m);font-size:9px;color:var(--t4);margin-top:3px}
+
+/* ══════════════════════════ ACTIVITY ════════════════════════ */
+.act-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.act-dot.g{background:var(--green)} .act-dot.r{background:var(--red)} .act-dot.o{background:var(--orange)} .act-dot.b{background:var(--blue)}
+.act-c{flex:1}
+.act-t{font-size:12.5px;font-weight:500;margin-bottom:1px}
+.act-ts{font-family:var(--font-m);font-size:10px;color:var(--t4)}
+
+/* ══════════════════════════ CHART ═══════════════════════════ */
+.cw{position:relative;height:200px}
+.cw-sm{position:relative;height:150px}
+.cw-md{position:relative;height:250px}
+
+/* ══════════════════════════ HEATMAP ════════════════════════ */
+.hmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.hcell{aspect-ratio:1;border-radius:3px;cursor:default;transition:transform .15s}
+.hcell:hover{transform:scale(1.2)}
+.h0{background:var(--s3)} .h1{background:rgba(200,255,0,.22)} .h2{background:rgba(200,255,0,.44)} .h3{background:rgba(200,255,0,.66)} .h4{background:rgba(200,255,0,.88)}
+
+/* ══════════════════════════ CLOCK WIDGET ════════════════════ */
+.clock-wgt{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:22px;text-align:center}
+.ctime{font-family:var(--font-m);font-size:38px;font-weight:600;color:var(--lime);letter-spacing:2px;margin-bottom:3px}
+.cdate{font-size:11px;color:var(--t2);margin-bottom:16px}
+.cstatus{font-family:var(--font-m);font-size:11px;font-weight:700;margin-bottom:16px;padding:7px 12px;border-radius:var(--r);border:1px dashed var(--border2);letter-spacing:.5px;text-transform:uppercase}
+.cacts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* ══════════════════════════ CALENDAR ═══════════════════════ */
+.cal-hdr{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px}
+.cal-dn{text-align:center;font-family:var(--font-m);font-size:9px;color:var(--t4);padding:3px 0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-cell{aspect-ratio:1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;transition:all .15s;background:var(--s2)}
+.cal-cell:hover{background:var(--s3)}
+.cal-cell.today{border:1px solid var(--lime);color:var(--lime);font-weight:700}
+.cal-cell.pres{background:rgba(0,217,126,.18);color:var(--green)}
+.cal-cell.abs{background:rgba(255,68,85,.08);color:var(--red)}
+.cal-cell.lv{background:rgba(77,159,255,.15);color:var(--blue)}
+.cal-cell.emp{background:transparent;cursor:default}
+
+/* ══════════════════════════ TASK CARD ═══════════════════════ */
+.tcard{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px;transition:border-color .15s}
+.tcard:hover{border-color:var(--border3)}
+.tc-t{font-size:13.5px;font-weight:600;margin-bottom:4px}
+.tc-m{font-size:11px;color:var(--t2);display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.tc-acts{display:flex;gap:7px;flex-wrap:wrap}
+
+/* ══════════════════════════ MESSAGES ═══════════════════════ */
+.msg-layout{display:grid;grid-template-columns:260px 1fr;border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;height:calc(100vh - 160px)}
+.conv-list{border-right:1px solid var(--border);overflow-y:auto;background:var(--s1)}
+.conv-hdr{padding:12px 14px;border-bottom:1px solid var(--border);font-family:var(--font-m);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1px}
+.conv-i{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:9px}
+.conv-i:hover,.conv-i.on{background:var(--s2)}
+.conv-av{width:34px;height:34px;border-radius:50%;background:var(--lime-a10);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:13px;font-weight:700;color:var(--lime);flex-shrink:0}
+.conv-info{flex:1;overflow:hidden}
+.conv-name{font-size:12.5px;font-weight:600;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-prev{font-size:10.5px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-unrd{background:var(--lime);color:#000;border-radius:8px;font-size:9px;font-weight:700;padding:1px 5px;font-family:var(--font-m)}
+.chat-area{display:flex;flex-direction:column;background:var(--bg)}
+.chat-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--s1);display:flex;align-items:center;gap:10px}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.msg-b{max-width:62%;padding:9px 13px;border-radius:var(--rl);font-size:12.5px;line-height:1.5}
+.msg-b.sent{background:var(--lime-a18);border:1px solid rgba(200,255,0,.18);align-self:flex-end}
+.msg-b.recv{background:var(--s2);border:1px solid var(--border);align-self:flex-start}
+.msg-ts{font-family:var(--font-m);font-size:9px;color:var(--t4);margin-top:3px;text-align:right}
+.chat-inp{border-top:1px solid var(--border);padding:12px;display:flex;gap:8px;background:var(--s1)}
+.chat-input{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;color:var(--text);outline:none;font-size:12.5px;transition:border-color .15s}
+.chat-input:focus{border-color:var(--lime)}
+
+/* ══════════════════════════ PROFILE ════════════════════════ */
+.prof-hero{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:24px;display:flex;align-items:center;gap:20px;margin-bottom:18px}
+.prof-av{width:72px;height:72px;border-radius:50%;background:var(--lime-a10);border:2px solid rgba(200,255,0,.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:26px;font-weight:800;color:var(--lime);flex-shrink:0;overflow:hidden}
+.prof-av img{width:100%;height:100%;object-fit:cover}
+
+/* ══════════════════ ACCESS REQUEST CARD ════════════════════ */
+.req-card{background:var(--s2);border:1px solid rgba(200,255,0,.15);border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.req-av{width:38px;height:38px;border-radius:50%;background:var(--lime-a10);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:14px;font-weight:700;color:var(--lime);flex-shrink:0}
+.req-info{flex:1}
+.req-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.req-meta{font-size:11px;color:var(--t2)}
+.req-acts{display:flex;gap:7px}
+
+/* ══════════════════════════ TOGGLE ═════════════════════════ */
+.tog{width:36px;height:20px;border-radius:10px;background:var(--border2);border:none;cursor:pointer;position:relative;transition:background .15s;flex-shrink:0}
+.tog.on{background:var(--lime)}
+.tog::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s}
+.tog.on::after{left:19px}
+
+/* ══════════════════════════ RANK ════════════════════════════ */
+.rank-i{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.rank-i:last-child{border-bottom:none}
+.rank-n{font-family:var(--font-m);font-size:11px;color:var(--t4);width:22px;text-align:center;flex-shrink:0}
+.rank-n.g{color:var(--lime);font-weight:700}
+.rank-av{width:32px;height:32px;border-radius:50%;background:var(--lime-a10);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-size:12px;font-weight:700;color:var(--lime);flex-shrink:0}
+.rank-inf{flex:1}
+.rank-nm{font-size:12.5px;font-weight:600;margin-bottom:1px}
+.rank-dp{font-size:10px;color:var(--t3)}
+.rank-sc{font-family:var(--font-h);font-size:14px;font-weight:800;color:var(--lime)}
+
+/* ══════════════════════════ MISC ════════════════════════════ */
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld{display:flex;align-items:center;justify-content:center;padding:50px;gap:10px;color:var(--t2);font-size:12px}
+.empty{text-align:center;padding:50px 20px;color:var(--t3)}
+.empty-i{font-size:36px;margin-bottom:10px;opacity:.3}
+.empty-t{font-size:12px}
+.sep{height:1px;background:var(--border);margin:14px 0}
+.kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.kv:last-child{border-bottom:none}
+.kv-l{color:var(--t2)}
+.kv-v{font-family:var(--font-m)}
+.progress-bar{height:4px;background:var(--s3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--lime);border-radius:2px;transition:width .4s ease}
+
+/* ══════════════════════════ MOBILE ═════════════════════════ */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);z-index:200;padding:6px 0 env(safe-area-inset-bottom)}
+.mob-items{display:flex;justify-content:space-around}
+.mob-i{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 10px;cursor:pointer;color:var(--t4);transition:color .15s;font-family:var(--font-m);font-size:8px;letter-spacing:.5px;text-transform:uppercase}
+.mob-i.on,.mob-i:hover{color:var(--lime)}
+.mob-ico{font-size:18px}
+
+/* ══════════════════════════ RESPONSIVE ════════════════════ */
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr)} .g5{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){
+  .sb{display:none} .mob-nav{display:block}
+  .pg-wrap{padding:14px;padding-bottom:76px}
+  .g2,.g3,.g4,.g5{grid-template-columns:1fr}
+  .fr{grid-template-columns:1fr}
+  .msg-layout{grid-template-columns:1fr;height:auto}
+  .conv-list{display:none}
+  .prof-hero{flex-direction:column;text-align:center}
+  .topbar{padding:0 14px} .tb-search{display:none}
+  .pg-hd{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:480px){.auth-wrap{padding:16px} .g5{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
-
 <body>
-  <script src="flutter_bootstrap.js" async></script>
-</body>
 
+<!-- ═══════════════════════ AUTH ════════════════════════════ -->
+<div id="auth-screen">
+<div class="auth-wrap">
+  <div class="auth-mark">BRAAND School+</div>
+  <div class="auth-tagline">// Workforce Operating System</div>
+  <div class="auth-h">Sign In</div>
+  <div class="auth-sub">Access your workspace dashboard</div>
+  <div class="auth-err" id="aerr"></div>
+  <div class="fld"><label>Email</label><input type="email" id="lemail" placeholder="you@braandschool.com" autocomplete="email"></div>
+  <div class="fld"><label>Password</label><input type="password" id="lpwd" placeholder="••••••••" autocomplete="current-password"></div>
+  <button class="auth-btn" id="lbtn" onclick="doLogin()"><span id="lbtxt">Sign In →</span></button>
+</div>
+</div>
+
+<!-- ═══════════════════════ APP ══════════════════════════════ -->
+<div id="app">
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sb" id="sb">
+  <div class="sb-top">
+    <div class="sb-logo">BRAAND+</div>
+    <button class="sb-tog" onclick="toggleSb()">☰</button>
+  </div>
+  <div class="sb-user" id="sb-user">
+    <div class="sb-av" id="sb-av"></div>
+    <div class="sb-uinfo"><div class="sb-uname" id="sb-name">—</div><div class="sb-urole" id="sb-role">—</div></div>
+  </div>
+  <div class="sb-nav" id="sb-nav"></div>
+  <div class="sb-bot">
+    <button class="logout-btn" onclick="doLogout()">
+      <span style="font-size:15px">⏏</span><span class="ni-lbl">Sign Out</span>
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="tb-title">Dashboard</div>
+    <div class="tb-search"><span style="color:var(--t4);font-size:13px">⌕</span><input type="text" placeholder="Search..." id="gsearch"></div>
+    <div class="tb-acts">
+      <button class="ib" onclick="oQuickTask()" title="Quick Add Task" style="font-size:17px;font-weight:700;line-height:1">＋</button>
+      <button class="theme-tog" onclick="toggleTheme()" id="theme-tog" title="Toggle light/dark mode"></button>
+      <div class="ib" onclick="toggleNotif()" id="notif-ib" title="Notifications"><span>🔔</span><span class="dot" id="notif-dot" style="display:none"></span></div>
+      <div class="ib" onclick="nav('profile')" title="Profile">👤</div>
+    </div>
+  </div>
+
+  <!-- EMPLOYEE NOTICE TICKER -->
+  <div class="ticker-bar" id="ticker-bar">
+    <div class="ticker-inner" id="ticker-inner"></div>
+  </div>
+
+  <div class="pg-wrap" id="pg-wrap"></div>
+</div>
+
+</div><!-- shell -->
+
+<!-- MOBILE NAV -->
+<div class="mob-nav" id="mob-nav"></div>
+</div><!-- app -->
+
+<div id="toasts"></div>
+<div class="mover" id="mover" onclick="cModal(event)">
+  <div class="mbox" id="mbox">
+    <div class="mh"><div class="mt" id="mt"></div><button class="mc" onclick="cModal()">✕</button></div>
+    <div class="mb" id="mb"></div>
+    <div class="mf" id="mf"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONFIG — replace ANON_KEY with your Supabase key
+   ════════════════════════════════════════════════════ */
+const SUPA_URL = 'https://bqjrdyxmcsbmiktwpukm.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxanJkeXhtY3NibWlrdHdwdWttIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzY2MTQyMywiZXhwIjoyMDc5MjM3NDIzfQ.ZXw6egzzD_6raYafNkL4vn-ZVmyfHeWzER9SGh5lDgY'; // ← REPLACE THIS
+
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+/* ─── STATE ──────────────────────────────────────── */
+let U=null, P=null, ROLE='employee', PAGE='';
+let SB_MINI=false, PROFILES=[], UNREAD=0, MSG_CHAN=null;
+let IS_DARK=true;
+
+/* ─── THEME ──────────────────────────────────────── */
+function toggleTheme(){
+  IS_DARK=!IS_DARK;
+  document.body.classList.toggle('light',!IS_DARK);
+  localStorage.setItem('bsp-theme',IS_DARK?'dark':'light');
+  // Update chart text colours on re-render
+}
+function initTheme(){
+  const saved=localStorage.getItem('bsp-theme');
+  if(saved==='light'){IS_DARK=false;document.body.classList.add('light')}
+}
+initTheme();
+
+/* ─── QUICK ADD TASK (global, both roles) ────────── */
+function oQuickTask(){
+  const empOpts=(PROFILES||[]).filter(p=>p.id!==U?.id).map(p=>`<option value="${p.id}">${p.name||p.email}</option>`).join('');
+  const adm=isAdmin();
+  oModal('Quick Add Task',`
+    <div class="fg"><label>Task Title</label><input id="qt-ti" placeholder="What needs to be done?" autofocus></div>
+    <div class="fg"><label>Description</label><textarea id="qt-de" rows="2" placeholder="Optional details…"></textarea></div>
+    <div class="fr">
+      <div class="fg"><label>Type</label><select id="qt-tp">
+        ${adm?'<option value="monthly">Monthly</option>':''}
+        <option value="daily">Daily</option>
+        <option value="hourly">Hourly</option>
+        <option value="personal" ${!adm?'selected':''}>Personal</option>
+      </select></div>
+      <div class="fg"><label>Priority</label><select id="qt-pr">
+        <option value="Low">Low</option><option value="Medium" selected>Medium</option>
+        <option value="High">High</option><option value="Urgent">Urgent</option>
+      </select></div>
+    </div>
+    ${adm?`<div class="fg"><label>Assign To</label><select id="qt-as"><option value="">Everyone</option>${empOpts}</select></div>`:''}
+    <div class="fr">
+      <div class="fg"><label>Date</label><input type="date" id="qt-dt" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="fg"><label>Deadline Time</label><input type="time" id="qt-dl"></div>
+    </div>
+    ${adm?`<div class="fr" id="qt-month-row" style="display:none">
+      <div class="fg"><label>Month</label><input type="number" id="qt-mo" min="1" max="12" value="${new Date().getMonth()+1}"></div>
+      <div class="fg"><label>Year</label><input type="number" id="qt-yr" value="${new Date().getFullYear()}"></div>
+    </div>`:''}
+    <p style="font-size:11px;color:var(--t3);margin-top:4px">${adm?'Task will be visible to assigned employees immediately.':'Personal tasks are only visible to you.'}</p>
+  `,`<button class="btn btn-g" onclick="cModal()">Cancel</button><button class="btn btn-l" onclick="saveQuickTask()">Create Task</button>`);
+  if(adm){
+    const tp=document.getElementById('qt-tp');
+    const mr=document.getElementById('qt-month-row');
+    if(tp&&mr){tp.addEventListener('change',()=>{mr.style.display=tp.value==='monthly'?'grid':'none'})}
+  }
+}
+async function saveQuickTask(){
+  const title=document.getElementById('qt-ti')?.value?.trim();
+  if(!title){toast('Task title is required','er');return}
+  const type=document.getElementById('qt-tp')?.value||'daily';
+  const priority=document.getElementById('qt-pr')?.value||'Medium';
+  const assignTo=document.getElementById('qt-as')?.value||null;
+  const dt=document.getElementById('qt-dt')?.value||null;
+  const dl=document.getElementById('qt-dl')?.value||null;
+  const desc=document.getElementById('qt-de')?.value||'';
+  let error;
+  if(type==='monthly'&&isAdmin()){
+    const mo=parseInt(document.getElementById('qt-mo')?.value)||new Date().getMonth()+1;
+    const yr=parseInt(document.getElementById('qt-yr')?.value)||new Date().getFullYear();
+    ({error}=await db.from('monthly_tasks').insert({title,description:desc,priority,assigned_to:assignTo,month:mo,year:yr,deadline_time:dl,task_type:'monthly'}));
+  } else if(type==='personal'){
+    ({error}=await db.from('tasks').insert({title,description:desc,priority,assigned_to:U.id,task_type:'personal',specific_date:dt,deadline_time:dl,admin_assessment:'pending'}));
+  } else {
+    ({error}=await db.from('tasks').insert({title,description:desc,priority,assigned_to:isAdmin()?(assignTo||null):U.id,task_type:type,specific_date:dt,deadline_time:dl,admin_assessment:'pending'}));
+  }
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Task created!','ok');cModal();
+  // Refresh current page if on tasks
+  if(PAGE==='a-tasks')pgAdminTasks($('pg-wrap'));
+  if(PAGE==='e-tasks')pgEmpTasks($('pg-wrap'));
+}
+
+/* ─── UTILS ──────────────────────────────────────── */
+const $=id=>document.getElementById(id);
+const fmt=ts=>{if(!ts)return'—';return new Date(typeof ts==='number'?ts:ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})};
+const fmtT=ts=>{if(!ts)return'—';return new Date(typeof ts==='number'?ts:ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
+const fmtDT=ts=>{if(!ts)return'—';const d=new Date(typeof ts==='number'?ts:ts);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
+const ini=n=>{if(!n)return'?';return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)};
+function toast(msg,type='in'){
+  const c=$('toasts'),t=document.createElement('div');
+  const ico={ok:'✓',er:'✕',in:'ℹ'};
+  t.className=`toast ${type}`;t.innerHTML=`<span style="opacity:.6">${ico[type]||'·'}</span><span>${msg}</span>`;
+  c.appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+function ld(el){el.innerHTML=`<div class="ld"><div class="spin"></div><span>Loading…</span></div>`}
+function empty(el,msg='Nothing here',ico='📭'){el.innerHTML=`<div class="empty"><div class="empty-i">${ico}</div><div class="empty-t">${msg}</div></div>`}
+const chartOpts=()=>{const tc=IS_DARK?'#666':'#9ca3af';const gc=IS_DARK?'rgba(255,255,255,.04)':'rgba(0,0,0,.06)';return{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:IS_DARK?'#888':'#6b7280',font:{size:10},padding:10}}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}}
+
+/* ─── AUTH ───────────────────────────────────────── */
+async function doLogin(){
+  const e=$('lemail').value.trim(),p=$('lpwd').value,b=$('lbtn'),er=$('aerr');
+  er.style.display='none';
+  if(!e||!p){er.textContent='Enter email and password';er.style.display='block';return}
+  b.disabled=true;$('lbtxt').textContent='Signing in…';
+  const{data,error}=await db.auth.signInWithPassword({email:e,password:p});
+  if(error){er.textContent=error.message;er.style.display='block';b.disabled=false;$('lbtxt').textContent='Sign In →';return}
+  await boot(data.user);
+}
+async function doLogout(){
+  await db.auth.signOut();
+  U=null;P=null;
+  $('auth-screen').style.display='flex';$('app').style.display='none';
+  toast('Signed out','in');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.activeElement.closest('#auth-screen'))doLogin()});
+
+/* ─── BOOT ───────────────────────────────────────── */
+async function boot(user){
+  U=user;
+  const{data:prof}=await db.from('profiles').select('*').eq('id',user.id).single();
+  P=prof||{id:user.id,email:user.email,name:user.email.split('@')[0],role:'employee'};
+  // Normalize role to lowercase so 'Admin', 'ADMIN', 'admin' all work
+  ROLE=(P.role||'employee').toLowerCase().trim();
+  $('auth-screen').style.display='none';$('app').style.display='block';
+  const{data:profs}=await db.from('profiles').select('*').order('name');
+  PROFILES=profs||[];
+  buildSb();buildMobNav();updateSbUser();
+  subscribeMessages();loadUnread();loadTicker();
+  nav(isAdmin()?'a-dash':'e-dash');
+}
+const isAdmin=()=>ROLE==='admin';
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  const{data:{session}}=await db.auth.getSession();
+  if(session)await boot(session.user);
+  if(SUPA_KEY==='YOUR_SUPABASE_ANON_KEY'){
+    const w=document.createElement('div');
+    w.style.cssText='position:fixed;top:0;left:0;right:0;background:var(--orange);color:#000;padding:9px 18px;font-size:12px;font-weight:700;text-align:center;z-index:9999;font-family:monospace';
+    w.textContent='⚠ Replace YOUR_SUPABASE_ANON_KEY in the script with your actual Supabase anon key';
+    document.body.prepend(w);
+  }
+});
+
+/* ─── SIDEBAR ────────────────────────────────────── */
+const ADMIN_NAV=[
+  {s:'OVERVIEW'},
+  {id:'a-dash',i:'◈',l:'Dashboard'},
+  {id:'a-live',i:'⊕',l:'Live Monitor'},
+  {s:'WORKFORCE'},
+  {id:'a-emp',i:'👥',l:'Employees'},
+  {id:'a-access',i:'🔐',l:'Access Requests'},
+  {id:'a-leaves',i:'🌿',l:'Leave Requests'},
+  {s:'WORK'},
+  {id:'a-tasks',i:'✓',l:'Tasks'},
+  {id:'a-perf',i:'🏆',l:'Performance'},
+  {s:'REPORTS'},
+  {id:'a-insights',i:'📈',l:'Insights'},
+  {s:'MANAGE'},
+  {id:'a-notices',i:'📢',l:'Notices'},
+  {id:'a-office',i:'🏢',l:'Office & Shifts'},
+  {id:'a-msgs',i:'💬',l:'Messages'},
+];
+const EMP_NAV=[
+  {id:'e-dash',i:'◈',l:'Dashboard'},
+  {id:'e-attend',i:'🕐',l:'Attendance'},
+  {id:'e-tasks',i:'✓',l:'My Tasks'},
+  {id:'e-msgs',i:'💬',l:'Messages',badge:true},
+  {id:'e-leaves',i:'🌿',l:'Leave'},
+  {id:'profile',i:'👤',l:'Profile'},
+];
+function buildSb(){
+  const items=isAdmin()?ADMIN_NAV:EMP_NAV;
+  $('sb-nav').innerHTML=items.map(it=>{
+    if(it.s)return`<div class="sb-sec">${it.s}</div>`;
+    return`<div class="nav-i" id="ni-${it.id}" onclick="nav('${it.id}')">
+      <span class="ni-icon">${it.i}</span>
+      <span class="ni-lbl">${it.l}</span>
+      ${it.badge?`<span class="ni-badge" id="nb-msg" style="${UNREAD?'':'display:none'}">${UNREAD||''}</span>`:''}
+    </div>`;
+  }).join('');
+}
+function updateSbUser(){
+  $('sb-name').textContent=P?.name||P?.email||'User';
+  $('sb-role').textContent=ROLE.toUpperCase();
+  const av=$('sb-av');
+  if(P?.avatar_url)av.innerHTML=`<img src="${P.avatar_url}" alt="">`;
+  else av.textContent=ini(P?.name||P?.email);
+}
+function toggleSb(){SB_MINI=!SB_MINI;$('sb').classList.toggle('mini',SB_MINI)}
+function buildMobNav(){
+  const items=isAdmin()
+    ?[{id:'a-dash',i:'◈',l:'Home'},{id:'a-emp',i:'👥',l:'Team'},{id:'a-tasks',i:'✓',l:'Tasks'},{id:'a-insights',i:'📈',l:'Reports'},{id:'a-msgs',i:'💬',l:'Msgs'}]
+    :[{id:'e-dash',i:'◈',l:'Home'},{id:'e-attend',i:'🕐',l:'Time'},{id:'e-tasks',i:'✓',l:'Tasks'},{id:'e-msgs',i:'💬',l:'Chat'},{id:'profile',i:'👤',l:'Me'}];
+  $('mob-nav').innerHTML=`<div class="mob-items">${items.map(it=>`<div class="mob-i" id="mi-${it.id}" onclick="nav('${it.id}')"><span class="mob-ico">${it.i}</span>${it.l}</div>`).join('')}</div>`;
+}
+
+/* ─── ROUTER ─────────────────────────────────────── */
+const TITLES={
+  'a-dash':'Admin Dashboard','a-live':'Live Monitor','a-emp':'Employees','a-access':'Access Requests',
+  'a-leaves':'Leave Requests','a-tasks':'Task Management','a-perf':'Performance','a-attend':'Attendance Reports',
+  'a-insights':'Insights','a-notices':'Notices','a-office':'Office & Shifts','a-msgs':'Messages',
+  'e-dash':'My Dashboard','e-attend':'My Attendance','e-tasks':'My Tasks','e-msgs':'Messages',
+  'e-leaves':'Leave','profile':'Profile'
+};
+function nav(pg){
+  PAGE=pg;
+  $('tb-title').textContent=TITLES[pg]||pg;
+  document.querySelectorAll('.nav-i').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.mob-i').forEach(el=>el.classList.remove('on'));
+  const ni=$(`ni-${pg}`);if(ni)ni.classList.add('on');
+  const mi=$(`mi-${pg}`);if(mi)mi.classList.add('on');
+  const c=$('pg-wrap');
+  const map={
+    'a-dash':pgAdminDash,'a-live':pgAdminLive,'a-emp':pgAdminEmp,'a-access':pgAdminAccess,
+    'a-leaves':pgAdminLeaves,'a-tasks':pgAdminTasks,'a-perf':pgAdminPerf,
+    'a-insights':pgAdminInsights,'a-notices':pgAdminNotices,'a-office':pgAdminOffice,'a-msgs':pgMsgs,
+    'e-dash':pgEmpDash,'e-attend':pgEmpAttend,'e-tasks':pgEmpTasks,'e-msgs':pgMsgs,
+    'e-leaves':pgEmpLeaves,'profile':pgProfile
+  };
+  c.innerHTML='';
+  (map[pg]||function(c){empty(c,'Page not found','🚧')})(c);
+}
+
+/* ─── MODAL ──────────────────────────────────────── */
+function oModal(t,b,f=''){$('mt').textContent=t;$('mb').innerHTML=b;$('mf').innerHTML=f;$('mover').classList.add('op')}
+function cModal(e){if(!e||e.target===$('mover'))$('mover').classList.remove('op')}
+
+/* ════════════════════════════════════════════════════
+   TICKER (employee notices bar)
+   ════════════════════════════════════════════════════ */
+async function loadTicker(){
+  if(isAdmin()){$('ticker-bar').classList.remove('visible');return}
+  const{data}=await db.from('notices').select('title,priority').order('created_at',{ascending:false}).limit(10);
+  if(!data?.length){$('ticker-bar').classList.remove('visible');return}
+  const html=data.map(n=>`<span class="ticker-item"><span class="ticker-tag">${(n.priority||'INFO').toUpperCase()}</span> ${n.title}</span>`).join('');
+  // Duplicate for seamless loop
+  $('ticker-inner').innerHTML=html+html;
+  $('ticker-bar').classList.add('visible');
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: DASHBOARD
+   ════════════════════════════════════════════════════ */
+async function pgAdminDash(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Good ${greet()}, ${(P?.name||'').split(' ')[0]||'Admin'} 👋</div>
+    <div class="pg-d">Here's the pulse of your workforce right now</div></div>
+    <div class="pg-actions">
+      <button class="btn btn-g btn-s" onclick="nav('a-live')">⊕ Live Monitor</button>
+      <button class="btn btn-l btn-s" onclick="oQuickTask()">+ New Task</button>
+    </div>
+  </div>
+  <div class="g5" id="adash-stats" style="margin-bottom:18px">
+    ${[1,2,3,4,5].map(()=>`<div class="stat"><div class="spin" style="margin:auto"></div></div>`).join('')}
+  </div>
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="ch"><span class="ct">Live Status</span><span class="b bg" id="live-cnt">● Live</span></div>
+      <div id="adash-live" class="monitor-grid"></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Today's Activity Feed</span></div>
+      <div id="adash-feed" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><span class="ct">Mood Heatmap — Last 28 Days</span></div>
+      <div id="adash-heat"></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Today's Attendance Split</span></div>
+      <div class="cw"><canvas id="adash-donut"></canvas></div>
+    </div>
+  </div>`;
+  loadAdminDash();
+}
+function greet(){const h=new Date().getHours();return h<12?'morning':h<17?'afternoon':'evening'}
+async function loadAdminDash(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const[{data:att},{data:profs}]=await Promise.all([
+    db.from('attendance_records').select('*').gte('timestamp',today.getTime()),
+    db.from('profiles').select('*')
+  ]);
+  const latestStatus={};
+  (att||[]).sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{latestStatus[r.user_id]=r});
+  const online=Object.values(latestStatus).filter(r=>r.type==='clockIn'||r.type==='breakEnd').length;
+  const onBreak=Object.values(latestStatus).filter(r=>r.type==='breakStart').length;
+  const total=profs?.length||0;
+  const pendingAccess=(profs||[]).filter(p=>p.status==='pending').length;
+  const el=$('adash-stats');
+  if(el)el.innerHTML=`
+    <div class="stat hi"><div class="stat-v" style="color:var(--lime)">${total}</div><div class="stat-l">Total Staff</div><div class="stat-ico">👥</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--green)">${online}</div><div class="stat-l">Online Now</div><div class="stat-ico">🟢</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--orange)">${onBreak}</div><div class="stat-l">On Break</div><div class="stat-ico">☕</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--t2)">${total-online-onBreak}</div><div class="stat-l">Offline</div><div class="stat-ico">⭘</div></div>
+    <div class="stat ${pendingAccess?'hi':''}"><div class="stat-v" style="color:${pendingAccess?'var(--orange)':'var(--t2)'}">${pendingAccess}</div><div class="stat-l">Pending Access</div><div class="stat-ico">🔐</div></div>`;
+
+  // Live grid
+  const lg=$('adash-live');
+  if(lg&&profs){
+    const pm={}; (profs||[]).forEach(p=>pm[p.id]=p);
+    lg.innerHTML=(profs||[]).slice(0,16).map(p=>{
+      const r=latestStatus[p.id];
+      const st=r?.type==='clockIn'||r?.type==='breakEnd'?'online':r?.type==='breakStart'?'break':'offline';
+      const lbl={'online':'ONLINE','break':'BREAK','offline':'OFFLINE'}[st];
+      const dc={'online':'g','break':'o','offline':'k'}[st];
+      const lastTime=r?fmtT(r.timestamp):'';
+      return`<div class="mon-card ${st}">
+        <div class="mon-av">${ini(p.name||p.email)}</div>
+        <div class="mon-name">${p.name||p.email?.split('@')[0]||'—'}</div>
+        <div class="mon-dept">${p.department||'—'}</div>
+        <div class="mon-pulse"><span class="pulse-dot ${dc}"></span>${lbl}</div>
+        ${lastTime?`<div class="mon-time">${lastTime}</div>`:''}
+      </div>`;
+    }).join('');
+    $('live-cnt').textContent=`● ${online} Online`;
+  }
+
+  // Feed
+  const feed=$('adash-feed');
+  if(feed){
+    const recent=(att||[]).sort((a,b)=>b.timestamp-a.timestamp).slice(0,12);
+    const pm={}; (profs||[]).forEach(p=>pm[p.id]=p);
+    const ti={clockIn:{d:'g',l:'Clocked In'},clockOut:{d:'r',l:'Clocked Out'},breakStart:{d:'o',l:'Break'},breakEnd:{d:'b',l:'Resumed'}};
+    if(!recent.length){empty(feed,'No activity today','📋');return}
+    feed.innerHTML=recent.map(r=>{
+      const q=ti[r.type]||{d:'k',l:r.type};
+      return`<div class="act-item"><div class="act-dot ${q.d}"></div><div class="act-c">
+        <div class="act-t"><strong>${pm[r.user_id]?.name||'Unknown'}</strong> ${q.l}</div>
+        <div class="act-ts">${fmtDT(r.timestamp)}</div>
+      </div></div>`;
+    }).join('');
+  }
+
+  // Heatmap
+  const hm=$('adash-heat');
+  if(hm){
+    const{data:mood}=await db.from('attendance_records').select('timestamp,mood').gte('timestamp',Date.now()-28*86400000);
+    const mbd={}; (mood||[]).forEach(r=>{const k=new Date(r.timestamp).toDateString();if(!mbd[k]){mbd[k]={t:0,c:0}} if(r.mood!=null){mbd[k].t+=r.mood;mbd[k].c++}});
+    let cells='';
+    for(let i=27;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toDateString();const avg=mbd[k]?.c?mbd[k].t/mbd[k].c:0;const h=avg>4?4:avg>3?3:avg>2?2:avg>0?1:0;cells+=`<div class="hcell h${h}" title="${d.toLocaleDateString()} — Mood ${avg?avg.toFixed(1):'N/A'}"></div>`}
+    hm.innerHTML=`<div class="hmap">${cells}</div><div style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:10px;color:var(--t3)"><span>Low</span>${[0,1,2,3,4].map(h=>`<div class="hcell h${h}" style="width:12px;height:12px"></div>`).join('')}<span>High Mood</span></div>`;
+  }
+
+  // Donut
+  const ctx=document.getElementById('adash-donut');
+  if(ctx)new Chart(ctx,{type:'doughnut',data:{labels:['Online','Break','Offline'],datasets:[{data:[online,onBreak,total-online-onBreak],backgroundColor:[IS_DARK?'rgba(0,217,126,.75)':'rgba(22,163,74,.75)',IS_DARK?'rgba(255,149,0,.75)':'rgba(234,88,12,.75)',IS_DARK?'rgba(50,50,50,.75)':'rgba(200,200,200,.75)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{position:'bottom',labels:{color:IS_DARK?'#888':'#6b7280',font:{size:10},padding:14}}}}});
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: LIVE MONITOR (full page)
+   ════════════════════════════════════════════════════ */
+async function pgAdminLive(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Live Workforce Monitor</div><div class="pg-d">Real-time view of all employee statuses — auto-refreshes every 30s</div></div>
+    <div class="pg-actions"><button class="btn btn-g" onclick="pgAdminLive($('pg-wrap'))">↻ Refresh</button></div>
+  </div>
+  <div class="g4" id="live-stats" style="margin-bottom:18px"></div>
+  <div class="card" style="margin-bottom:18px">
+    <div class="ch"><span class="ct">All Employees</span>
+      <div style="display:flex;gap:8px">
+        <select class="si" id="live-filter" onchange="renderLiveGrid()" style="min-width:130px">
+          <option value="">All Status</option><option value="online">Online</option><option value="break">On Break</option><option value="offline">Offline</option>
+        </select>
+      </div>
+    </div>
+    <div id="live-grid" class="monitor-grid"></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">Today's Timeline</span></div>
+    <div id="live-timeline" style="max-height:360px;overflow-y:auto"></div>
+  </div>`;
+  loadLiveMonitor();
+  // Auto-refresh
+  setTimeout(()=>{if(PAGE==='a-live')loadLiveMonitor()},30000);
+}
+let liveData={att:[],profs:[],status:{}};
+async function loadLiveMonitor(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const[{data:att},{data:profs}]=await Promise.all([
+    db.from('attendance_records').select('*').gte('timestamp',today.getTime()).order('timestamp',{ascending:false}),
+    db.from('profiles').select('*')
+  ]);
+  liveData.att=att||[];liveData.profs=profs||[];
+  const s={};
+  [...(att||[])].reverse().forEach(r=>{s[r.user_id]=r});
+  liveData.status=s;
+  const online=Object.values(s).filter(r=>r.type==='clockIn'||r.type==='breakEnd').length;
+  const onBreak=Object.values(s).filter(r=>r.type==='breakStart').length;
+  const total=profs?.length||0;
+  const ls=$('live-stats');
+  if(ls)ls.innerHTML=`
+    <div class="stat hi"><div class="stat-v" style="color:var(--lime)">${total}</div><div class="stat-l">Total Staff</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--green)">${online}</div><div class="stat-l">Online</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--orange)">${onBreak}</div><div class="stat-l">On Break</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--t2)">${total-online-onBreak}</div><div class="stat-l">Offline</div></div>`;
+  renderLiveGrid();
+  // Timeline
+  const tl=$('live-timeline');
+  if(tl){
+    const pm={};(profs||[]).forEach(p=>pm[p.id]=p);
+    const ti={clockIn:{d:'g',l:'🟢 Clocked In'},clockOut:{d:'r',l:'⭘ Clocked Out'},breakStart:{d:'o',l:'☕ Break Start'},breakEnd:{d:'b',l:'▶ Resumed'}};
+    tl.innerHTML=(att||[]).map(r=>{
+      const q=ti[r.type]||{d:'k',l:r.type};
+      return`<div class="act-item">
+        <div class="act-dot ${q.d}"></div>
+        <div class="act-c">
+          <div class="act-t" style="display:flex;align-items:center;gap:8px">
+            <strong>${pm[r.user_id]?.name||'Unknown'}</strong>${q.l}
+            ${pm[r.user_id]?.department?`<span class="b bk">${pm[r.user_id].department}</span>`:''}
+          </div>
+          <div class="act-ts">${fmtDT(r.timestamp)}${r.mood?` · Mood ${r.mood}/5`:''}</div>
+        </div>
+      </div>`;
+    }).join('')||`<div class="empty"><div class="empty-t">No activity recorded today</div></div>`;
+  }
+}
+function renderLiveGrid(){
+  const filter=$('live-filter')?.value||'';
+  const grid=$('live-grid');if(!grid)return;
+  const pm={};liveData.profs.forEach(p=>pm[p.id]=p);
+  let emps=liveData.profs.filter(p=>p.status!=='pending');
+  if(filter){
+    emps=emps.filter(p=>{
+      const r=liveData.status[p.id];
+      const st=r?.type==='clockIn'||r?.type==='breakEnd'?'online':r?.type==='breakStart'?'break':'offline';
+      return st===filter;
+    });
+  }
+  grid.innerHTML=emps.map(p=>{
+    const r=liveData.status[p.id];
+    const st=r?.type==='clockIn'||r?.type==='breakEnd'?'online':r?.type==='breakStart'?'break':'offline';
+    const lbl={'online':'ONLINE','break':'ON BREAK','offline':'OFFLINE'}[st];
+    const dc={'online':'g','break':'o','offline':'k'}[st];
+    return`<div class="mon-card ${st}">
+      <div class="mon-av">${ini(p.name||p.email)}</div>
+      <div class="mon-name">${p.name||p.email?.split('@')[0]}</div>
+      <div class="mon-dept">${p.department||p.role||'—'}</div>
+      <div class="mon-pulse"><span class="pulse-dot ${dc}"></span>${lbl}</div>
+      ${r?`<div class="mon-time">Since ${fmtT(r.timestamp)}</div>`:''}
+    </div>`;
+  }).join('')||`<div class="empty" style="grid-column:1/-1"><div class="empty-i">🔍</div><div class="empty-t">No employees match filter</div></div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: EMPLOYEES
+   ════════════════════════════════════════════════════ */
+let empData=[],empPg=1;const empPS=10;
+async function pgAdminEmp(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Employees</div><div class="pg-d">Manage your workforce directory</div></div>
+    <div class="pg-actions"><button class="btn btn-l" onclick="oEmpModal()">+ Add Employee</button></div>
+  </div>
+  <div class="tt">
+    <input type="text" class="si" placeholder="Search name or email…" id="emp-srch" oninput="renderEmpTbl()" style="min-width:200px">
+    <select class="si" id="emp-dept" onchange="renderEmpTbl()"><option value="">All Depts</option></select>
+    <select class="si" id="emp-stat" onchange="renderEmpTbl()"><option value="">All Status</option><option>active</option><option>inactive</option><option>pending</option></select>
+  </div>
+  <div class="tw">
+    <table class="dt">
+      <thead><tr><th>Employee</th><th>Department</th><th>Role</th><th>Status</th><th>Joined</th><th>Points</th><th>Actions</th></tr></thead>
+      <tbody id="emp-tbody"></tbody>
+    </table>
+  </div>
+  <div class="pag" id="emp-pag"></div>`;
+  const{data}=await db.from('profiles').select('*').order('name');
+  empData=data||[];PROFILES=empData;
+  const depts=[...new Set(empData.map(p=>p.department).filter(Boolean))];
+  const df=$('emp-dept');if(df)df.innerHTML=`<option value="">All Depts</option>`+depts.map(d=>`<option>${d}</option>`).join('');
+  renderEmpTbl();
+}
+function renderEmpTbl(){
+  const s=($('emp-srch')?.value||'').toLowerCase();
+  const d=$('emp-dept')?.value||'';
+  const st=$('emp-stat')?.value||'';
+  let f=empData.filter(p=>{
+    const nm=(p.name||p.email||'').toLowerCase();
+    return nm.includes(s)&&(!d||p.department===d)&&(!st||p.status===st);
+  });
+  const pages=Math.ceil(f.length/empPS)||1;
+  if(empPg>pages)empPg=1;
+  const sl=f.slice((empPg-1)*empPS,empPg*empPS);
+  const tb=$('emp-tbody');if(!tb)return;
+  tb.innerHTML=sl.map(p=>{
+    const sc={active:'bg',inactive:'br',pending:'bo'}[p.status]||'bk';
+    return`<tr>
+      <td><div style="display:flex;align-items:center;gap:9px">
+        <div class="rank-av" style="width:30px;height:30px;font-size:11px">${ini(p.name||p.email)}</div>
+        <div><div style="font-weight:600;font-size:12.5px">${p.name||'—'}</div><div style="font-size:11px;color:var(--t3)">${p.email||'—'}</div></div>
+      </div></td>
+      <td>${p.department||'—'}</td>
+      <td><span class="b bb">${p.role||'employee'}</span></td>
+      <td><span class="b ${sc}">${p.status||'active'}</span></td>
+      <td style="font-family:var(--font-m);font-size:11px">${fmt(p.joining_date)}</td>
+      <td style="font-family:var(--font-m);color:var(--lime)">${p.points||0}</td>
+      <td><div style="display:flex;gap:5px">
+        <button class="bic" onclick="oEmpModal('${p.id}')" title="Edit">✏</button>
+        <button class="bic" onclick="toggleEmpStatus('${p.id}','${p.status||'active'}')" title="Toggle status">⊙</button>
+        <button class="bic" style="color:var(--red)" onclick="if(confirm('Reset points?'))resetPoints('${p.id}')" title="Reset points">↺</button>
+      </div></td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="7"><div class="empty"><div class="empty-t">No employees found</div></div></td></tr>`;
+  const pg=$('emp-pag');
+  if(pg)pg.innerHTML=`<span style="margin-right:6px">${f.length} total</span>${Array.from({length:pages},(_,i)=>`<button class="pb${empPg===i+1?' on':''}" onclick="empPg=${i+1};renderEmpTbl()">${i+1}</button>`).join('')}`;
+}
+function oEmpModal(id){
+  const p=id?empData.find(e=>e.id===id):{};
+  oModal(id?'Edit Employee':'Add Employee',`
+    <div class="fr">
+      <div class="fg"><label>Full Name</label><input id="ep-nm" value="${p?.name||''}"></div>
+      <div class="fg"><label>Email</label><input type="email" id="ep-em" value="${p?.email||''}" ${id?'disabled':''}></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Department</label><input id="ep-dp" value="${p?.department||''}"></div>
+      <div class="fg"><label>Role</label><select id="ep-rl"><option value="employee"${p?.role!=='admin'?' selected':''}>Employee</option><option value="admin"${p?.role==='admin'?' selected':''}>Admin</option></select></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Phone</label><input id="ep-ph" value="${p?.phone||''}"></div>
+      <div class="fg"><label>Status</label><select id="ep-st">${['active','inactive','pending'].map(s=>`<option${p?.status===s?' selected':''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Birthday</label><input type="date" id="ep-bd" value="${p?.birthday||''}"></div>
+      <div class="fg"><label>Joining Date</label><input type="date" id="ep-jd" value="${p?.joining_date||''}"></div>
+    </div>
+    <div class="fg"><label>Bio</label><textarea id="ep-bio">${p?.bio||''}</textarea></div>
+    <div class="fg"><label>Avatar URL</label><input type="url" id="ep-av" value="${p?.avatar_url||''}" placeholder="https://…"></div>
+    ${!id?'<p style="font-size:11px;color:var(--t3);margin-top:6px">User must register with this email to link their account.</p>':''}
+  `,`<button class="btn btn-g" onclick="cModal()">Cancel</button><button class="btn btn-l" onclick="saveEmp('${id||''}')">Save</button>`);
+}
+async function saveEmp(id){
+  const d={name:$('ep-nm').value,department:$('ep-dp').value,role:$('ep-rl').value,phone:$('ep-ph').value,status:$('ep-st').value,birthday:$('ep-bd').value||null,joining_date:$('ep-jd').value||null,bio:$('ep-bio').value,avatar_url:$('ep-av').value};
+  if(id){
+    const{error}=await db.from('profiles').update(d).eq('id',id);
+    if(error){toast('Save failed: '+error.message,'er');return}
+  } else {
+    d.email=$('ep-em').value;d.id=crypto.randomUUID();
+    const{error}=await db.from('profiles').insert(d);
+    if(error){toast('Save failed: '+error.message,'er');return}
+  }
+  toast('Saved!','ok');cModal();pgAdminEmp($('pg-wrap'));
+}
+async function toggleEmpStatus(id,cur){
+  const next=cur==='active'?'inactive':cur==='inactive'?'pending':'active';
+  await db.from('profiles').update({status:next}).eq('id',id);
+  toast(`Status → ${next}`,'ok');pgAdminEmp($('pg-wrap'));
+}
+async function resetPoints(id){
+  await db.from('profiles').update({points:0}).eq('id',id);toast('Points reset','ok');pgAdminEmp($('pg-wrap'));
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: ACCESS REQUESTS (pending users)
+   ════════════════════════════════════════════════════ */
+async function pgAdminAccess(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Access Requests</div><div class="pg-d">Grant or deny workspace access to new users</div></div>
+  </div>
+  <div id="access-list"><div class="ld"><div class="spin"></div></div></div>`;
+  loadAccessRequests();
+}
+async function loadAccessRequests(){
+  const{data}=await db.from('profiles').select('*').eq('status','pending').order('created_at',{ascending:false});
+  const el=$('access-list');
+  if(!data?.length){empty(el,'No pending access requests','🔐');return}
+  el.innerHTML=data.map(p=>`<div class="req-card">
+    <div class="req-av">${ini(p.name||p.email)}</div>
+    <div class="req-info">
+      <div class="req-name">${p.name||'Unknown'}</div>
+      <div class="req-meta">${p.email||'—'} · ${p.department||'No dept'} · Registered: ${fmt(p.created_at)}</div>
+    </div>
+    <div class="req-acts">
+      <button class="btn btn-ok btn-s" onclick="grantAccess('${p.id}')">✓ Grant Access</button>
+      <button class="btn btn-r btn-s" onclick="denyAccess('${p.id}')">✕ Deny</button>
+      <button class="bic" onclick="oEmpModal('${p.id}')" title="View details">👁</button>
+    </div>
+  </div>`).join('');
+}
+async function grantAccess(id){
+  await db.from('profiles').update({status:'active'}).eq('id',id);
+  toast('Access granted','ok');loadAccessRequests();
+}
+async function denyAccess(id){
+  const reason=prompt('Reason for denial (optional):');
+  await db.from('profiles').update({status:'inactive'}).eq('id',id);
+  toast('Access denied','ok');loadAccessRequests();
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: ATTENDANCE REPORTS
+   ════════════════════════════════════════════════════ */
+let attData=[],attPg=1;const attPS=15;
+async function pgAdminAttend(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Attendance Reports</div><div class="pg-d">Full audit trail — filter, analyse, export</div></div>
+    <div class="pg-actions">
+      <button class="btn btn-g" onclick="exportAttCSV()">⬇ CSV</button>
+      <button class="btn btn-g" onclick="exportAttPDF()">⬇ PDF</button>
+    </div>
+  </div>
+  <div class="tt">
+    <input class="si" placeholder="Search employee…" id="att-srch" oninput="filterAtt()" style="min-width:180px">
+    <select class="si" id="att-tp" onchange="filterAtt()"><option value="">All Types</option><option>clockIn</option><option>clockOut</option><option>breakStart</option><option>breakEnd</option></select>
+    <input type="date" class="si" id="att-from" onchange="filterAtt()">
+    <input type="date" class="si" id="att-to" onchange="filterAtt()">
+    <button class="btn btn-g btn-s" onclick="$('att-srch').value='';$('att-tp').value='';$('att-from').value='';$('att-to').value='';filterAtt()">✕ Clear</button>
+  </div>
+  <div class="tw">
+    <table class="dt" id="att-tbl">
+      <thead><tr><th>Employee</th><th>Dept</th><th>Type</th><th>Date</th><th>Time</th><th>Mood</th><th>Verified</th><th>Location</th></tr></thead>
+      <tbody id="att-tbody"></tbody>
+    </table>
+  </div>
+  <div class="pag" id="att-pag"></div>`;
+  const{data}=await db.from('attendance_records').select('*').order('timestamp',{ascending:false}).limit(1000);
+  attData=data||[];renderAttTbl();
+}
+function filterAtt(){attPg=1;renderAttTbl()}
+function renderAttTbl(){
+  const pm={};PROFILES.forEach(p=>pm[p.id]=p);
+  const s=($('att-srch')?.value||'').toLowerCase();
+  const tp=$('att-tp')?.value||'';
+  const fr=$('att-from')?.value;const to=$('att-to')?.value;
+  let f=attData.filter(r=>{
+    const p=pm[r.user_id];const nm=(p?.name||p?.email||'').toLowerCase();
+    const dt=new Date(r.timestamp).toISOString().slice(0,10);
+    return nm.includes(s)&&(!tp||r.type===tp)&&(!fr||dt>=fr)&&(!to||dt<=to);
+  });
+  const pages=Math.ceil(f.length/attPS)||1;
+  if(attPg>pages)attPg=1;
+  const sl=f.slice((attPg-1)*attPS,attPg*attPS);
+  const tbc={clockIn:'bg',clockOut:'br',breakStart:'bo',breakEnd:'bb'};
+  const tb=$('att-tbody');if(!tb)return;
+  tb.innerHTML=sl.map(r=>{
+    const p=pm[r.user_id];
+    return`<tr>
+      <td><div style="font-weight:600">${p?.name||'Unknown'}</div><div style="font-size:10px;color:var(--t3)">${p?.email||r.user_id?.slice(0,8)}</div></td>
+      <td style="font-size:11px;color:var(--t2)">${p?.department||'—'}</td>
+      <td><span class="b ${tbc[r.type]||'bk'}">${r.type}</span></td>
+      <td style="font-family:var(--font-m);font-size:11px">${fmt(r.timestamp)}</td>
+      <td style="font-family:var(--font-m);font-size:12px">${fmtT(r.timestamp)}</td>
+      <td style="font-family:var(--font-m);font-size:11px;color:var(--lime)">${r.mood!=null?r.mood+'/5':'—'}</td>
+      <td>${r.biometric_verified?'<span class="b bg">Bio ✓</span>':r.verification_method?`<span class="b bk">${r.verification_method}</span>`:'—'}</td>
+      <td>${r.location_lat?`<a href="https://maps.google.com?q=${r.location_lat},${r.location_lng}" target="_blank" style="color:var(--blue);font-size:11px">📍 Map</a>`:'—'}</td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="8"><div class="empty"><div class="empty-t">No records</div></div></td></tr>`;
+  const pg=$('att-pag');
+  if(pg)pg.innerHTML=`<span style="margin-right:8px">${f.length} records</span>`+(attPg>1?`<button class="pb" onclick="attPg--;renderAttTbl()">‹</button>`:'')+`<span style="margin:0 8px;font-family:var(--font-m);font-size:10px">Page ${attPg}/${pages}</span>`+(attPg<pages?`<button class="pb" onclick="attPg++;renderAttTbl()">›</button>`:'');
+}
+function exportAttCSV(){
+  const pm={};PROFILES.forEach(p=>pm[p.id]=p);
+  const rows=[['Name','Email','Department','Type','Date','Time','Mood','Biometric','Location']];
+  attData.forEach(r=>{const p=pm[r.user_id];const d=new Date(r.timestamp);rows.push([p?.name||'Unknown',p?.email||'',p?.department||'',r.type,d.toLocaleDateString(),d.toLocaleTimeString(),r.mood||'',r.biometric_verified?'Yes':'No',r.location_lat?`${r.location_lat},${r.location_lng}`:''])});
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='attendance_report.csv';a.click();
+  toast('CSV exported','ok');
+}
+async function exportAttPDF(){
+  const pm={};PROFILES.forEach(p=>pm[p.id]=p);
+  const rows=attData.slice(0,200).map(r=>{
+    const p=pm[r.user_id];const d=new Date(r.timestamp);
+    return`<tr><td>${p?.name||'Unknown'}</td><td>${p?.department||'—'}</td><td>${r.type}</td><td>${d.toLocaleDateString()}</td><td>${d.toLocaleTimeString()}</td><td>${r.mood!=null?r.mood+'/5':'—'}</td></tr>`;
+  }).join('');
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Attendance Report</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:20px}h1{font-size:16px;margin-bottom:4px}p{color:#666;font-size:11px;margin-bottom:16px}table{width:100%;border-collapse:collapse}th{background:#f0f0f0;padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}td{padding:6px 10px;border-bottom:1px solid #eee;font-size:11px}@media print{body{padding:10px}}</style></head><body><h1>BRAAND School+ — Attendance Report</h1><p>Generated: ${new Date().toLocaleString()} · ${attData.length} records</p><table><thead><tr><th>Name</th><th>Dept</th><th>Type</th><th>Date</th><th>Time</th><th>Mood</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();toast('PDF window opened','ok');
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: TASKS
+   ════════════════════════════════════════════════════ */
+async function pgAdminTasks(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Task Management</div><div class="pg-d">Create and monitor all workforce tasks</div></div>
+    <div class="pg-actions"><button class="btn btn-l" onclick="oTaskModal()">+ Create Task</button></div>
+  </div>
+  <div class="tabs">
+    <div class="tab on" onclick="swTab(this,'tp-monthly')">Monthly Tasks</div>
+    <div class="tab" onclick="swTab(this,'tp-daily')">Daily Tasks</div>
+    <div class="tab" onclick="swTab(this,'tp-hourly')">Hourly Tasks</div>
+    <div class="tab" onclick="swTab(this,'tp-review')">Submissions Review</div>
+  </div>
+  <div class="tp on" id="tp-monthly"><div class="ld"><div class="spin"></div></div></div>
+  <div class="tp" id="tp-daily"></div>
+  <div class="tp" id="tp-hourly"></div>
+  <div class="tp" id="tp-review"></div>`;
+  loadTaskPanel('monthly');
+}
+async function loadTaskPanel(type){
+  if(type==='monthly'){
+    const{data}=await db.from('monthly_tasks').select('*').order('created_at',{ascending:false});
+    renderTaskList($('tp-monthly'),data,'monthly_tasks');
+  } else if(type==='daily'){
+    const{data}=await db.from('tasks').select('*').eq('task_type','daily').order('created_at',{ascending:false});
+    renderTaskList($('tp-daily'),data,'tasks');
+  } else if(type==='hourly'){
+    const{data}=await db.from('tasks').select('*').eq('task_type','hourly').order('created_at',{ascending:false});
+    renderTaskList($('tp-hourly'),data,'tasks');
+  } else {
+    const{data}=await db.from('user_monthly_tasks').select('*, monthly_tasks(title), profiles(name,email)').order('created_at',{ascending:false});
+    const panel=$('tp-review');
+    if(!data?.length){empty(panel,'No submissions yet','📋');return}
+    const sc={Completed:'bg','In Progress':'bb',Pending:'bo','On Hold':'bk',Review:'bp'};
+    const ac={accepted:'bg',rejected:'br',pending:'bo'};
+    panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(s=>`<div class="tcard">
+      <div class="tc-t">${s.monthly_tasks?.title||'Task'}</div>
+      <div class="tc-m">
+        <span class="b ${sc[s.status]||'bk'}">${s.status}</span>
+        <span class="b ${ac[s.admin_assessment]||'bo'}">${s.admin_assessment||'pending'} review</span>
+        <span>👤 ${s.profiles?.name||s.profiles?.email||'Unknown'}</span>
+        ${s.completed_at?`<span style="font-family:var(--font-m);font-size:10px">✓ ${fmtDT(s.completed_at)}</span>`:''}
+      </div>
+      ${s.admin_assessment==='pending'?`<div class="tc-acts">
+        <button class="btn btn-ok btn-s" onclick="assessTask('${s.id}','accepted')">✓ Accept</button>
+        <button class="btn btn-r btn-s" onclick="assessTask('${s.id}','rejected')">✕ Reject</button>
+      </div>`:s.admin_assessment?`<div class="b ${s.admin_assessment==='accepted'?'bg':'br'}" style="width:fit-content">${s.admin_assessment==='accepted'?'✓ Accepted':'✕ Rejected'}</div>`:''}
+    </div>`).join('')}`;
+  }
+}
+function renderTaskList(panel,data,table){
+  if(!data?.length){empty(panel,'No tasks created','✓');return}
+  const pri={Low:'bk',Medium:'bb',High:'bo',Urgent:'br'};
+  panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(t=>{
+    const asn=PROFILES.find(p=>p.id===t.assigned_to);
+    return`<div class="tcard">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="flex:1">
+          <div class="tc-t">${t.title}</div>
+          <div class="tc-m">
+            <span class="b ${pri[t.priority]||'bk'}">${t.priority||'Normal'}</span>
+            <span class="b bl">${t.task_type||'task'}</span>
+            ${asn?`<span>→ ${asn.name||asn.email}</span>`:`<span style="color:var(--t4)">All staff</span>`}
+            ${t.deadline_time?`<span style="font-family:var(--font-m);font-size:10px">⏰ ${t.deadline_time}</span>`:''}
+            ${t.time_limit_hours||t.time_limit_minutes?`<span style="font-family:var(--font-m);font-size:10px">⌛ ${t.time_limit_hours||0}h ${t.time_limit_minutes||0}m</span>`:''}
+          </div>
+          ${t.description?`<div style="font-size:12px;color:var(--t2)">${t.description}</div>`:''}
+        </div>
+        <button class="bic" style="color:var(--red);flex-shrink:0" onclick="deleteTask('${t.id}','${table}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+function oTaskModal(){
+  const empOpts=PROFILES.map(p=>`<option value="${p.id}">${p.name||p.email}</option>`).join('');
+  oModal('Create Task',`
+    <div class="tabs" style="margin-bottom:14px">
+      <div class="tab on" onclick="swTab(this,'ct-monthly')">Monthly</div>
+      <div class="tab" onclick="swTab(this,'ct-daily')">Daily</div>
+      <div class="tab" onclick="swTab(this,'ct-hourly')">Hourly</div>
+    </div>
+    <div class="tp on" id="ct-monthly">
+      <div class="fg"><label>Title</label><input id="ct-ti" placeholder="Task title"></div>
+      <div class="fg"><label>Description</label><textarea id="ct-de"></textarea></div>
+      <div class="fr">
+        <div class="fg"><label>Month</label><input type="number" id="ct-mo" min="1" max="12" value="${new Date().getMonth()+1}"></div>
+        <div class="fg"><label>Year</label><input type="number" id="ct-yr" value="${new Date().getFullYear()}"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Priority</label><select id="ct-pr"><option>Low</option><option>Medium</option><option selected>High</option><option>Urgent</option></select></div>
+        <div class="fg"><label>Assign To</label><select id="ct-as"><option value="">Everyone</option>${empOpts}</select></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Hours Limit</label><input type="number" id="ct-hl" value="0" min="0"></div>
+        <div class="fg"><label>Minutes Limit</label><input type="number" id="ct-ml" value="0" min="0" max="59"></div>
+      </div>
+      <div class="fg"><label>Deadline Time</label><input type="time" id="ct-dl"></div>
+    </div>
+    <div class="tp" id="ct-daily">
+      <div class="fg"><label>Title</label><input id="dt-ti" placeholder="Daily task title"></div>
+      <div class="fg"><label>Description</label><textarea id="dt-de"></textarea></div>
+      <div class="fr">
+        <div class="fg"><label>Priority</label><select id="dt-pr"><option>Low</option><option>Medium</option><option selected>High</option><option>Urgent</option></select></div>
+        <div class="fg"><label>Assign To</label><select id="dt-as"><option value="">Everyone</option>${empOpts}</select></div>
+      </div>
+      <div class="fg"><label>Specific Date</label><input type="date" id="dt-dt"></div>
+      <div class="fg"><label>Deadline Time</label><input type="time" id="dt-dl"></div>
+    </div>
+    <div class="tp" id="ct-hourly">
+      <div class="fg"><label>Title</label><input id="ht-ti" placeholder="Hourly task title"></div>
+      <div class="fg"><label>Description</label><textarea id="ht-de"></textarea></div>
+      <div class="fr">
+        <div class="fg"><label>Start Time</label><input type="time" id="ht-st" value="09:00"></div>
+        <div class="fg"><label>End Time</label><input type="time" id="ht-et" value="10:00"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Priority</label><select id="ht-pr"><option>Low</option><option>Medium</option><option selected>High</option><option>Urgent</option></select></div>
+        <div class="fg"><label>Assign To</label><select id="ht-as"><option value="">Everyone</option>${empOpts}</select></div>
+      </div>
+      <div class="fg"><label>Specific Date</label><input type="date" id="ht-dt"></div>
+    </div>
+  `,`<button class="btn btn-g" onclick="cModal()">Cancel</button><button class="btn btn-l" onclick="saveTask()">Create</button>`);
+}
+async function saveTask(){
+  const activeTab=document.querySelector('#mb .tp.on');
+  const id=activeTab?.id;
+  let error;
+  if(id==='ct-monthly'){
+    const t={title:$('ct-ti').value,description:$('ct-de').value,month:+$('ct-mo').value,year:+$('ct-yr').value,priority:$('ct-pr').value,assigned_to:$('ct-as').value||null,time_limit_hours:+$('ct-hl').value||0,time_limit_minutes:+$('ct-ml').value||0,deadline_time:$('ct-dl').value||null,task_type:'monthly'};
+    if(!t.title){toast('Title required','er');return}
+    ({error}=await db.from('monthly_tasks').insert(t));
+  } else if(id==='ct-daily'){
+    const t={title:$('dt-ti').value,description:$('dt-de').value,task_type:'daily',priority:$('dt-pr').value,assigned_to:$('dt-as').value||null,specific_date:$('dt-dt').value||null,deadline_time:$('dt-dl').value||null,admin_assessment:'pending'};
+    if(!t.title){toast('Title required','er');return}
+    ({error}=await db.from('tasks').insert(t));
+  } else {
+    const t={title:$('ht-ti').value,description:$('ht-de').value,task_type:'hourly',priority:$('ht-pr').value,assigned_to:$('ht-as').value||null,specific_date:$('ht-dt').value||null,deadline_time:$('ht-et').value||null,time_start:$('ht-st').value,admin_assessment:'pending'};
+    if(!t.title){toast('Title required','er');return}
+    ({error}=await db.from('tasks').insert(t));
+  }
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Task created!','ok');cModal();pgAdminTasks($('pg-wrap'));
+}
+async function assessTask(id,val){
+  await db.from('user_monthly_tasks').update({admin_assessment:val}).eq('id',id);
+  toast(`Task ${val}`,'ok');loadTaskPanel('review');
+}
+async function deleteTask(id,table){
+  if(!confirm('Delete?'))return;await db.from(table).delete().eq('id',id);toast('Deleted','ok');pgAdminTasks($('pg-wrap'));
+}
+function swTab(el,pid){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  const con=el.closest('.tabs').parentElement;con.querySelectorAll(':scope>.tp').forEach(p=>p.classList.remove('on'));
+  const panel=$(pid);if(panel){panel.classList.add('on');
+    if(!panel.innerHTML.trim()||panel.querySelector('.spin')){
+      if(pid==='tp-daily')loadTaskPanel('daily');
+      else if(pid==='tp-hourly')loadTaskPanel('hourly');
+      else if(pid==='tp-review')loadTaskPanel('review');
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: PERFORMANCE & LEADERBOARD
+   ════════════════════════════════════════════════════ */
+async function pgAdminPerf(c){
+  c.innerHTML=`
+  <div class="pg-hd"><div class="pg-t">Performance & Leaderboard</div><div class="pg-d">Task completion rankings and attendance streaks</div></div>
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card">
+      <div class="ch"><span class="ct">🏆 Task Completion Rank</span></div>
+      <div id="rank-tasks"><div class="ld"><div class="spin"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">⭐ Points Leaderboard</span></div>
+      <div id="rank-pts"><div class="ld"><div class="spin"></div></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">🔥 Attendance Streaks</span></div>
+    <div id="rank-streak"><div class="ld"><div class="spin"></div></div></div>
+  </div>`;
+  loadPerf();
+}
+async function loadPerf(){
+  const[{data:profs},{data:att}]=await Promise.all([
+    db.from('profiles').select('*'),
+    db.from('attendance_records').select('user_id,timestamp,type').order('timestamp',{ascending:false})
+  ]);
+  const medals=['🥇','🥈','🥉'];
+  const renderBoard=(arr,key)=>arr.slice(0,10).map((p,i)=>`<div class="rank-i">
+    <div class="rank-n ${i===0?'g':''}">${medals[i]||i+1}</div>
+    <div class="rank-av">${ini(p.name||p.email)}</div>
+    <div class="rank-inf"><div class="rank-nm">${p.name||p.email}</div><div class="rank-dp">${p.department||'—'}</div></div>
+    <div class="rank-sc">${p[key]||0}</div>
+  </div>`).join('');
+  const byTasks=[...profs||[]].sort((a,b)=>(b.tasks_completed||0)-(a.tasks_completed||0));
+  const byPts=[...profs||[]].sort((a,b)=>(b.points||0)-(a.points||0));
+  $('rank-tasks').innerHTML=renderBoard(byTasks,'tasks_completed');
+  $('rank-pts').innerHTML=renderBoard(byPts,'points');
+  // Streaks
+  const sm={};(att||[]).forEach(r=>{if(!sm[r.user_id])sm[r.user_id]=[];sm[r.user_id].push(r)});
+  const pm={};(profs||[]).forEach(p=>pm[p.id]=p);
+  const streaks=Object.entries(sm).map(([uid,recs])=>({uid,s:calcStreak(recs)})).sort((a,b)=>b.s-a.s);
+  $('rank-streak').innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>Rank</th><th>Employee</th><th>Department</th><th>Current Streak</th><th>Progress</th></tr></thead><tbody>${streaks.slice(0,10).map((x,i)=>{
+    const p=pm[x.uid];
+    return`<tr>
+      <td><span style="font-family:var(--font-m)">${medals[i]||i+1}</span></td>
+      <td><div style="font-weight:600">${p?.name||'Unknown'}</div></td>
+      <td style="color:var(--t2)">${p?.department||'—'}</td>
+      <td><span style="font-family:var(--font-h);font-size:18px;font-weight:800;color:var(--lime)">${x.s}</span><span style="color:var(--t3);font-size:11px"> days</span></td>
+      <td style="min-width:120px"><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,(x.s/30)*100)}%"></div></div></td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function calcStreak(recs){
+  const days=new Set(recs.filter(r=>r.type==='clockIn').map(r=>new Date(r.timestamp).toDateString()));
+  let streak=0;const today=new Date();
+  for(let i=0;i<60;i++){const d=new Date(today);d.setDate(d.getDate()-i);if(days.has(d.toDateString()))streak++;else break}
+  return streak;
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: INSIGHTS
+   ════════════════════════════════════════════════════ */
+async function pgAdminInsights(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Insights & Analytics</div><div class="pg-d">Data intelligence across attendance, tasks, and team health</div></div>
+    <div class="pg-actions"><button class="btn btn-g" onclick="exportInsightsPDF()">⬇ Report PDF</button></div>
+  </div>
+  <div class="g2" style="margin-bottom:18px">
+    <div class="card"><div class="ch"><span class="ct">Attendance — Last 30 Days</span></div><div class="cw-md"><canvas id="att-trend"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Task Status Breakdown</span></div><div class="cw-md"><canvas id="task-stat"></canvas></div></div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="ch"><span class="ct">Leave by Type</span></div><div class="cw"><canvas id="leave-tp"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Dept Distribution</span></div><div class="cw"><canvas id="dept-dist"></canvas></div></div>
+    <div class="card"><div class="ch"><span class="ct">Hourly Clock-Ins</span></div><div class="cw"><canvas id="hourly-att"></canvas></div></div>
+  </div>`;
+  buildInsightCharts();
+}
+async function buildInsightCharts(){
+  const[{data:att},{data:tasks},{data:leaves},{data:profs}]=await Promise.all([
+    db.from('attendance_records').select('timestamp,type').gte('timestamp',Date.now()-30*86400000),
+    db.from('user_monthly_tasks').select('status'),
+    db.from('leave_requests').select('leave_type,status'),
+    db.from('profiles').select('department')
+  ]);
+  const co=chartOpts();
+  // Attendance trend
+  const days={};for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days[d.toDateString()]=0}
+  (att||[]).filter(r=>r.type==='clockIn').forEach(r=>{const k=new Date(r.timestamp).toDateString();if(k in days)days[k]++});
+  const labels=Object.keys(days).map(d=>{const dd=new Date(d);return`${dd.getMonth()+1}/${dd.getDate()}`});
+  new Chart(document.getElementById('att-trend'),{type:'line',data:{labels,datasets:[{label:'Clock-ins',data:Object.values(days),borderColor:IS_DARK?'#C8FF00':'#5c8500',backgroundColor:IS_DARK?'rgba(200,255,0,.07)':'rgba(92,133,0,.07)',tension:.4,pointRadius:0,borderWidth:2}]},options:{...co,plugins:{legend:{display:false}}}});
+  // Task status
+  const ts={Completed:0,'In Progress':0,Pending:0,'On Hold':0};
+  (tasks||[]).forEach(t=>{if(t.status in ts)ts[t.status]++});
+  new Chart(document.getElementById('task-stat'),{type:'bar',data:{labels:Object.keys(ts),datasets:[{data:Object.values(ts),backgroundColor:[IS_DARK?'rgba(0,217,126,.7)':'rgba(22,163,74,.7)',IS_DARK?'rgba(77,159,255,.7)':'rgba(37,99,235,.7)',IS_DARK?'rgba(255,149,0,.7)':'rgba(234,88,12,.7)',IS_DARK?'rgba(80,80,80,.7)':'rgba(180,180,180,.7)'],borderWidth:0,borderRadius:5}]},options:{...co,plugins:{legend:{display:false}}}});
+  // Leave types
+  const lt={};(leaves||[]).filter(l=>l.status==='Approved').forEach(l=>{const k=l.leave_type||'Other';lt[k]=(lt[k]||0)+1});
+  const lc=IS_DARK?['rgba(200,255,0,.75)','rgba(77,159,255,.75)','rgba(255,149,0,.75)','rgba(176,136,255,.75)']:['rgba(92,133,0,.75)','rgba(37,99,235,.75)','rgba(234,88,12,.75)','rgba(124,58,237,.75)'];
+  const lgColor=IS_DARK?'#888':'#6b7280';
+  new Chart(document.getElementById('leave-tp'),{type:'doughnut',data:{labels:Object.keys(lt),datasets:[{data:Object.values(lt),backgroundColor:lc,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:lgColor,font:{size:10},padding:10}}}}});
+  // Dept dist
+  const dd={};(profs||[]).forEach(p=>{const k=p.department||'Other';dd[k]=(dd[k]||0)+1});
+  new Chart(document.getElementById('dept-dist'),{type:'pie',data:{labels:Object.keys(dd),datasets:[{data:Object.values(dd),backgroundColor:lc,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:lgColor,font:{size:10},padding:10}}}}});
+  // Hourly
+  const hh=new Array(24).fill(0);(att||[]).filter(r=>r.type==='clockIn').forEach(r=>hh[new Date(r.timestamp).getHours()]++);
+  new Chart(document.getElementById('hourly-att'),{type:'bar',data:{labels:Array.from({length:24},(_,i)=>`${i}:00`),datasets:[{data:hh,backgroundColor:IS_DARK?'rgba(200,255,0,.5)':'rgba(92,133,0,.5)',borderWidth:0,borderRadius:3}]},options:{...co,plugins:{legend:{display:false}}}});
+}
+function exportInsightsPDF(){
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Insights Report</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:30px;color:#111}h1{font-size:20px;margin-bottom:6px}p{font-size:12px;color:#666;margin-bottom:20px}h2{font-size:14px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #C8FF00}@media print{body{padding:16px}}</style></head><body><h1>BRAAND School+ — Insights Report</h1><p>Generated: ${new Date().toLocaleString()} · For management review</p><h2>Summary</h2><p>This report covers attendance trends, task completions, and team distribution over the last 30 days. Please refer to the dashboard for live charts and detailed breakdowns.</p><script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: NOTICES (ticker bar creator)
+   ════════════════════════════════════════════════════ */
+async function pgAdminNotices(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Notices</div><div class="pg-d">Create notices — they appear as a live running bar for all employees</div></div>
+    <div class="pg-actions"><button class="btn btn-l" onclick="oNoticeModal()">+ New Notice</button></div>
+  </div>
+  <div class="card" style="margin-bottom:18px;background:var(--lime-a10);border-color:rgba(200,255,0,.25)">
+    <div class="ch"><span class="ct" style="color:var(--lime)">Live Ticker Preview</span></div>
+    <div id="notice-preview-ticker" style="overflow:hidden;border-radius:6px;background:rgba(0,0,0,.3);padding:8px 0"></div>
+  </div>
+  <div id="notices-list"><div class="ld"><div class="spin"></div></div></div>`;
+  loadNotices();
+}
+async function loadNotices(){
+  const{data}=await db.from('notices').select('*').order('created_at',{ascending:false});
+  const el=$('notices-list');
+  if(!data?.length){empty(el,'No notices published','📢');updateNoticePreview([]);return}
+  updateNoticePreview(data);
+  const pc={urgent:'br',medium:'bo',normal:'bk'};
+  el.innerHTML=`<div style="display:grid;gap:10px">${data.map(n=>`<div class="card" style="padding:14px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-weight:700;font-size:14px">${n.title}</span>
+          <span class="b ${pc[n.priority]||'bk'}">${(n.priority||'normal').toUpperCase()}</span>
+          ${n.category?`<span class="b bb">${n.category}</span>`:''}
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.6;margin-bottom:6px">${n.content||''}</div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--t4)">${fmtDT(n.created_at)}</div>
+      </div>
+      <button class="bic" style="color:var(--red);flex-shrink:0" onclick="deleteNotice('${n.id}')">🗑</button>
+    </div>
+  </div>`).join('')}`;
+}
+function updateNoticePreview(data){
+  const el=$('notice-preview-ticker');if(!el)return;
+  if(!data.length){el.innerHTML=`<div style="font-size:11px;color:var(--t3);text-align:center;padding:6px">No notices — add one to see the preview</div>`;return}
+  const html=data.map(n=>`<span class="ticker-item"><span class="ticker-tag">${(n.priority||'INFO').toUpperCase()}</span> ${n.title}</span>`).join('');
+  el.innerHTML=`<div class="ticker-inner">${html+html}</div>`;
+}
+function oNoticeModal(){
+  oModal('Create Notice',`
+    <div class="fg"><label>Title</label><input id="nc-ti" placeholder="Notice title — this shows in the ticker bar"></div>
+    <div class="fr">
+      <div class="fg"><label>Priority</label><select id="nc-pr"><option value="normal">Normal</option><option value="medium">Medium</option><option value="urgent">Urgent</option></select></div>
+      <div class="fg"><label>Category</label><input id="nc-ca" placeholder="HR, Admin, Event…"></div>
+    </div>
+    <div class="fg"><label>Full Content</label><textarea id="nc-co" rows="4" placeholder="Full notice text…"></textarea></div>
+    <p style="font-size:11px;color:var(--lime);margin-top:6px">💡 The notice title will scroll as a live ticker bar for all employees.</p>
+  `,`<button class="btn btn-g" onclick="cModal()">Cancel</button><button class="btn btn-l" onclick="saveNotice()">Publish</button>`);
+}
+async function saveNotice(){
+  const n={title:$('nc-ti').value,content:$('nc-co').value,priority:$('nc-pr').value,category:$('nc-ca').value,created_by:U.id};
+  if(!n.title||!n.content){toast('Title and content required','er');return}
+  const{error}=await db.from('notices').insert(n);
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Notice published — ticker updated!','ok');cModal();loadNotices();
+}
+async function deleteNotice(id){
+  if(!confirm('Delete?'))return;await db.from('notices').delete().eq('id',id);toast('Deleted','ok');loadNotices();
+}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: OFFICE & SHIFTS
+   ════════════════════════════════════════════════════ */
+async function pgAdminOffice(c){
+  c.innerHTML=`
+  <div class="pg-hd"><div class="pg-t">Office & Shifts</div><div class="pg-d">Manage locations, coordinates, working hours and shift patterns</div></div>
+  <div class="tabs">
+    <div class="tab on" onclick="swOffTab(this,'off-loc')">Office Locations</div>
+    <div class="tab" onclick="swOffTab(this,'off-hours')">Working Hours</div>
+    <div class="tab" onclick="swOffTab(this,'off-shifts')">Shifts</div>
+    <div class="tab" onclick="swOffTab(this,'off-devices')">Device Bindings</div>
+  </div>
+  <div class="tp on" id="off-loc"><div class="ld"><div class="spin"></div></div></div>
+  <div class="tp" id="off-hours"></div>
+  <div class="tp" id="off-shifts"></div>
+  <div class="tp" id="off-devices"></div>`;
+  loadOfficeLocs();
+}
+async function loadOfficeLocs(){
+  const{data}=await db.from('office_locations').select('*');
+  const panel=$('off-loc');
+  panel.innerHTML=`<button class="btn btn-l" style="margin-bottom:14px" onclick="oLocModal()">+ Add Location</button>`;
+  if(!data?.length){panel.innerHTML+=`<div class="empty"><div class="empty-i">🏢</div><div class="empty-t">No locations added</div></div>`;return}
+  panel.innerHTML+=`<div style="display:grid;gap:10px">${data.map(l=>`<div class="card" style="padding:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px">${l.name}</div>
+        <div style="display:flex;gap:12px;font-family:var(--font-m);font-size:11px;color:var(--t2)">
+          <span>📍 ${l.latitude}, ${l.longitude}</span>
+          <span>Radius: ${l.radius_meters}m</span>
+        </div>
+        <a href="https://maps.google.com?q=${l.latitude},${l.longitude}" target="_blank" style="font-size:11px;color:var(--blue);display:inline-block;margin-top:6px">🗺 View on Google Maps</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="tog ${l.is_active?'on':''}" onclick="toggleLoc('${l.id}',${!l.is_active})"></button>
+        <button class="bic" style="color:var(--red)" onclick="deleteLoc('${l.id}')">🗑</button>
+      </div>
+    </div>
+  </div>`).join('')}`;
+}
+function oLocModal(){
+  oModal('Add Office Location',`
+    <div class="fg"><label>Location Name</label><input id="lc-nm" placeholder="Main Office, Branch 2…"></div>
+    <div class="fr">
+      <div class="fg"><label>Latitude</label><input type="number" id="lc-la" step="any" placeholder="22.5726"></div>
+      <div class="fg"><label>Longitude</label><input type="number" id="lc-lo" step="any" placeholder="88.3639"></div>
+    </div>
+    <div class="fg"><label>Radius (meters)</label><input type="number" id="lc-rd" value="100" min="10"></div>
+    <p style="font-size:11px;color:var(--t2);margin-top:6px">💡 Use Google Maps to get exact coordinates: right-click any location → "What's here?"</p>
+  `,`<button class="btn btn-g" onclick="cModal()">Cancel</button><button class="btn btn-l" onclick="saveLoc()">Add</button>`);
+}
+async function saveLoc(){
+  const l={name:$('lc-nm').value,latitude:parseFloat($('lc-la').value),longitude:parseFloat($('lc-lo').value),radius_meters:parseInt($('lc-rd').value)||100,is_active:true};
+  if(!l.name||isNaN(l.latitude)||isNaN(l.longitude)){toast('Fill all fields','er');return}
+  const{error}=await db.from('office_locations').insert(l);
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Location added','ok');cModal();loadOfficeLocs();
+}
+async function toggleLoc(id,v){await db.from('office_locations').update({is_active:v}).eq('id',id);loadOfficeLocs()}
+async function deleteLoc(id){if(!confirm('Delete?'))return;await db.from('office_locations').delete().eq('id',id);loadOfficeLocs()}
+
+function swOffTab(el,pid){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  document.querySelectorAll('#pg-wrap .tp').forEach(p=>p.classList.remove('on'));
+  const panel=$(pid);if(panel)panel.classList.add('on');
+  if(pid==='off-hours'&&!panel.innerHTML.trim())loadOfficeHours();
+  if(pid==='off-shifts'&&!panel.innerHTML.trim())loadShifts();
+  if(pid==='off-devices'&&!panel.innerHTML.trim())loadDevices();
+}
+async function loadOfficeHours(){
+  const{data}=await db.from('office_hours_settings').select('*').single();
+  const panel=$('off-hours');
+  panel.innerHTML=`<div class="card" style="max-width:480px">
+    <div class="ch"><span class="ct">Default Working Hours</span></div>
+    <div class="fr"><div class="fg"><label>In Time</label><input type="time" id="oh-in" value="${data?.in_time||'09:00'}"></div><div class="fg"><label>Out Time</label><input type="time" id="oh-out" value="${data?.out_time||'18:00'}"></div></div>
+    <div class="fg" style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><input type="checkbox" id="oh-sun" ${data?.sunday_off?'checked':''}><label for="oh-sun" style="font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0">Sunday off</label></div>
+    <button class="btn btn-l" onclick="saveOffHours(${data?.id||'null'})">Save Hours</button>
+  </div>`;
+}
+async function saveOffHours(id){
+  const p={in_time:$('oh-in').value,out_time:$('oh-out').value,sunday_off:$('oh-sun').checked,is_active:true};
+  if(id&&id!=='null')await db.from('office_hours_settings').update(p).eq('id',id);
+  else await db.from('office_hours_settings').insert(p);
+  toast('Hours saved','ok');
+}
+async function loadShifts(){
+  const{data}=await db.from('shifts').select('*').order('name');
+  const panel=$('off-shifts');
+  panel.innerHTML=`<button class="btn btn-l" style="margin-bottom:14px" onclick="oShiftModal()">+ Add Shift</button>`;
+  if(!data?.length){panel.innerHTML+=`<div class="empty"><div class="empty-i">🕐</div><div class="empty-t">No shifts defined yet</div></div>`;return}
+  panel.innerHTML+=`<div class="tw"><table class="dt"><thead><tr><th>Shift Name</th><th>In Time</th><th>Out Time</th><th>Days</th><th>Active</th><th>Actions</th></tr></thead><tbody>${data.map(s=>`<tr>
+    <td style="font-weight:600">${s.name}</td>
+    <td style="font-family:var(--font-m)">${s.in_time||'—'}</td>
+    <td style="font-family:var(--font-m)">${s.out_time||'—'}</td>
+    <td style="font-size:11px;color:var(--t2)">${(s.days_of_week||[]).join(', ')||'All days'}</td>
+    <td><button class="tog ${s.is_active?'on':''}" onclick="toggleShift('${s.id}',${!s.is_active})"></button></td>
+    <td><button class="bic" style="color:var(--red)" onclick="deleteShift('${s.id}')">🗑</button></td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+function oShiftModal(){
+  oModal('Add Shift',`
+    <div class="fg"><label>Shift Name</label><input id="sh-nm" placeholder="Morning, Evening, Night…"></div>
+    <div class="fr"><div class="fg"><label>In Time</label><input type="time" id="sh-in" value="09:00"></div><div class="fg"><label>Out Time</label><input type="time" id="sh-out" value="18:00"></div></div>
+    <div class="fg"><label>Days of Week</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" name="sh-day" value="${d}" checked>${d}</label>`).join('')}</div>
+    </div>
+  `,`<button class="btn btn-g" onclick="cModal()">Cancel</button><button class="btn btn-l" onclick="saveShift()">Add Shift</button>`);
+}
+async function saveShift(){
+  const days=[...document.querySelectorAll('input[name="sh-day"]:checked')].map(c=>c.value);
+  const{error}=await db.from('shifts').insert({name:$('sh-nm').value,in_time:$('sh-in').value,out_time:$('sh-out').value,days_of_week:days,is_active:true});
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Shift added','ok');cModal();loadShifts();
+}
+async function toggleShift(id,v){await db.from('shifts').update({is_active:v}).eq('id',id);loadShifts()}
+async function deleteShift(id){if(!confirm('Delete?'))return;await db.from('shifts').delete().eq('id',id);loadShifts()}
+async function loadDevices(){
+  const{data}=await db.from('device_bindings').select('*, profiles(name,email)').order('created_at',{ascending:false});
+  const panel=$('off-devices');
+  if(!data?.length){empty(panel,'No device bindings','📱');return}
+  panel.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>Employee</th><th>Device Name</th><th>Model</th><th>Device ID</th><th>Active</th></tr></thead><tbody>${data.map(d=>`<tr>
+    <td>${d.profiles?.name||'Unknown'}</td>
+    <td>${d.device_name||'—'}</td>
+    <td>${d.device_model||'—'}</td>
+    <td style="font-family:var(--font-m);font-size:10px;color:var(--t3)">${(d.device_id||'').slice(0,20)||'—'}</td>
+    <td><button class="tog ${d.is_active?'on':''}" onclick="toggleDev('${d.id}',${!d.is_active})"></button></td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+async function toggleDev(id,v){await db.from('device_bindings').update({is_active:v}).eq('id',id);loadDevices()}
+
+/* ════════════════════════════════════════════════════
+   ADMIN: LEAVE REQUESTS
+   ════════════════════════════════════════════════════ */
+async function pgAdminLeaves(c){
+  c.innerHTML=`
+  <div class="pg-hd"><div class="pg-t">Leave Requests</div><div class="pg-d">Review, approve and reject leave applications</div></div>
+  <div class="tabs">
+    <div class="tab on" onclick="swLvTab(this,'lv-pending')">Pending</div>
+    <div class="tab" onclick="swLvTab(this,'lv-all')">All Requests</div>
+    <div class="tab" onclick="swLvTab(this,'lv-balance')">Leave Balances</div>
+  </div>
+  <div class="tp on" id="lv-pending"><div class="ld"><div class="spin"></div></div></div>
+  <div class="tp" id="lv-all"></div>
+  <div class="tp" id="lv-balance"></div>`;
+  loadPendingLeaves();
+}
+async function loadPendingLeaves(){
+  const{data}=await db.from('leave_requests').select('*').eq('status','Pending').order('created_at',{ascending:false});
+  const pm={};PROFILES.forEach(p=>pm[p.id]=p);
+  const panel=$('lv-pending');
+  if(!data?.length){empty(panel,'No pending requests 🎉','🌿');return}
+  panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(r=>{
+    const p=pm[r.user_id];
+    const days=r.start_date&&r.end_date?Math.ceil((new Date(r.end_date)-new Date(r.start_date))/(86400000))+1:1;
+    return`<div class="card" style="padding:16px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div class="rank-av">${ini(p?.name||'?')}</div>
+            <div><div style="font-weight:700">${p?.name||'Unknown'}</div><div style="font-size:11px;color:var(--t2)">${p?.department||''} · ${p?.email||''}</div></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <span class="b bb">${r.leave_type||'Annual'}</span>
+            <span class="b bk">📅 ${fmt(r.start_date)} → ${fmt(r.end_date)}</span>
+            <span class="b bo">${days} day${days!==1?'s':''}</span>
+          </div>
+          <div style="font-size:12px;color:var(--t2)">${r.reason||'No reason provided'}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">
+          <button class="btn btn-ok btn-s" onclick="handleLeave('${r.id}','Approved')">✓ Approve</button>
+          <button class="btn btn-r btn-s" onclick="handleLeave('${r.id}','Rejected')">✕ Reject</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+async function handleLeave(id,status){
+  const comment=status==='Rejected'?prompt('Reason for rejection (optional):'):'';
+  const{error}=await db.from('leave_requests').update({status,admin_comment:comment}).eq('id',id);
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast(`Leave ${status.toLowerCase()}`,'ok');pgAdminLeaves($('pg-wrap'));
+}
+function swLvTab(el,pid){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  document.querySelectorAll('#pg-wrap .tp').forEach(p=>p.classList.remove('on'));
+  const panel=$(pid);if(panel)panel.classList.add('on');
+  if(pid==='lv-all'&&!panel.innerHTML.trim())loadAllLeaves();
+  if(pid==='lv-balance'&&!panel.innerHTML.trim())loadLeaveBalances();
+}
+async function loadAllLeaves(){
+  const{data}=await db.from('leave_requests').select('*').order('created_at',{ascending:false});
+  const pm={};PROFILES.forEach(p=>pm[p.id]=p);
+  const panel=$('lv-all');
+  if(!data?.length){empty(panel,'No leave requests','🌿');return}
+  const sc={Pending:'bo',Approved:'bg',Rejected:'br'};
+  panel.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Status</th><th>Comment</th></tr></thead><tbody>${data.map(r=>{const p=pm[r.user_id];return`<tr><td>${p?.name||'?'}</td><td>${r.leave_type||'Annual'}</td><td style="font-family:var(--font-m);font-size:11px">${fmt(r.start_date)}</td><td style="font-family:var(--font-m);font-size:11px">${fmt(r.end_date)}</td><td><span class="b ${sc[r.status]||'bk'}">${r.status}</span></td><td style="font-size:11px;color:var(--t2)">${r.admin_comment||'—'}</td></tr>`}).join('')}</tbody></table></div>`;
+}
+async function loadLeaveBalances(){
+  const{data}=await db.from('leave_balances').select('*');
+  const pm={};PROFILES.forEach(p=>pm[p.id]=p);
+  const panel=$('lv-balance');
+  if(!data?.length){empty(panel,'No balance records','📊');return}
+  panel.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>Employee</th><th>Year</th><th>Total</th><th>Used</th><th>Pending</th><th>Available</th></tr></thead><tbody>${data.map(b=>{const p=pm[b.user_id];const avail=(b.total_leaves||0)-(b.used_leaves||0)-(b.pending_leaves||0);return`<tr><td style="font-weight:600">${p?.name||'Unknown'}</td><td style="font-family:var(--font-m)">${b.year}</td><td>${b.total_leaves}</td><td style="color:var(--red)">${b.used_leaves}</td><td style="color:var(--orange)">${b.pending_leaves}</td><td><span style="font-family:var(--font-h);font-size:16px;font-weight:800;color:var(--lime)">${avail}</span></td></tr>`}).join('')}</tbody></table></div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   MESSAGES (shared admin+employee)
+   ════════════════════════════════════════════════════ */
+let activeConvId=null;
+async function pgMsgs(c){
+  const adm=isAdmin();
+  c.innerHTML=`
+  <div class="pg-hd" style="margin-bottom:10px"><div class="pg-t">Messages</div><div class="pg-d">${adm?'Chat with employees and fellow admins':'Real-time team messaging'}</div></div>
+  <div class="msg-layout">
+    <div class="conv-list">
+      <div class="conv-hdr">Conversations</div>
+      <div id="conv-list-inner"><div class="ld"><div class="spin"></div></div></div>
+    </div>
+    <div class="chat-area">
+      <div class="chat-hdr" id="chat-hdr">
+        <div style="font-size:13px;color:var(--t3)">Select a conversation to start messaging</div>
+      </div>
+      <div class="chat-msgs" id="chat-msgs"><div class="empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="empty-i">💬</div><div class="empty-t">No conversation selected</div></div></div>
+      <div class="chat-inp" id="chat-inp" style="display:none">
+        <input type="text" class="chat-input" id="msg-inp" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMsg()">
+        <button class="btn btn-l" onclick="sendMsg()">Send</button>
+      </div>
+    </div>
+  </div>`;
+  loadConvList();
+}
+async function loadConvList(){
+  const el=$('conv-list-inner');if(!el)return;
+  let partners=PROFILES.filter(p=>p.id!==U.id);
+  if(!partners.length){empty(el,'No team members','👥');return}
+  // Get unread counts
+  const{data:msgs}=await db.from('messages').select('sender_id,recipient_id,read').or(`sender_id.eq.${U.id},recipient_id.eq.${U.id}`);
+  const unreadByPartner={};
+  (msgs||[]).filter(m=>m.recipient_id===U.id&&!m.read).forEach(m=>{unreadByPartner[m.sender_id]=(unreadByPartner[m.sender_id]||0)+1});
+  el.innerHTML=partners.map(p=>`<div class="conv-i ${activeConvId===p.id?'on':''}" onclick="openConv('${p.id}')">
+    <div class="conv-av">${ini(p.name||p.email)}</div>
+    <div class="conv-info">
+      <div class="conv-name">${p.name||p.email}</div>
+      <div class="conv-prev">${p.department||p.role||'—'}</div>
+    </div>
+    ${unreadByPartner[p.id]?`<span class="conv-unrd">${unreadByPartner[p.id]}</span>`:''}
+  </div>`).join('');
+}
+async function openConv(pid){
+  activeConvId=pid;
+  const partner=PROFILES.find(p=>p.id===pid);
+  const hdr=$('chat-hdr');const inp=$('chat-inp');const msgs=$('chat-msgs');
+  if(hdr)hdr.innerHTML=`<div class="conv-av" style="width:32px;height:32px;font-size:12px">${ini(partner?.name||partner?.email||'?')}</div><div><div style="font-weight:600;font-size:13px">${partner?.name||partner?.email||'Unknown'}</div><div style="font-size:10px;color:var(--t3)">${partner?.department||partner?.role||'—'}</div></div>`;
+  if(inp)inp.style.display='flex';
+  await db.from('messages').update({read:true}).eq('recipient_id',U.id).eq('sender_id',pid);
+  const{data}=await db.from('messages').select('*').or(`and(sender_id.eq.${U.id},recipient_id.eq.${pid}),and(sender_id.eq.${pid},recipient_id.eq.${U.id})`).order('created_at',{ascending:true});
+  if(msgs){
+    msgs.innerHTML=(data||[]).length===0?`<div class="empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="empty-i">👋</div><div class="empty-t">Say hello!</div></div>`:
+      (data||[]).map(m=>{const mine=m.sender_id===U.id;return`<div style="${mine?'align-self:flex-end':''}"><div class="msg-b ${mine?'sent':'recv'}">${m.message}</div><div class="msg-ts">${fmtT(m.created_at)}</div></div>`}).join('');
+    msgs.scrollTop=msgs.scrollHeight;
+  }
+  loadConvList();loadUnread();
+}
+async function sendMsg(){
+  const inp=$('msg-inp');if(!inp||!activeConvId)return;
+  const txt=inp.value.trim();if(!txt)return;inp.value='';
+  const{error}=await db.from('messages').insert({sender_id:U.id,recipient_id:activeConvId,message:txt,read:false});
+  if(error){toast('Send failed','er');return}
+  openConv(activeConvId);
+}
+function subscribeMessages(){
+  if(MSG_CHAN)db.removeChannel(MSG_CHAN);
+  MSG_CHAN=db.channel('msgs').on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`recipient_id=eq.${U.id}`},()=>{loadUnread();if(PAGE==='e-msgs'||PAGE==='a-msgs')loadConvList()}).subscribe();
+}
+async function loadUnread(){
+  const{count}=await db.from('messages').select('*',{count:'exact',head:true}).eq('recipient_id',U.id).eq('read',false);
+  UNREAD=count||0;
+  const nb=$('nb-msg');if(nb){nb.textContent=UNREAD||'';nb.style.display=UNREAD?'':'none'}
+}
+function toggleNotif(){toast(UNREAD?`You have ${UNREAD} unread messages`:'No new notifications','in')}
+
+/* ════════════════════════════════════════════════════
+   EMPLOYEE: DASHBOARD
+   ════════════════════════════════════════════════════ */
+async function pgEmpDash(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">Good ${greet()}, ${(P?.name||'').split(' ')[0]||'there'} 👋</div><div class="pg-d">Your workspace at a glance</div></div>
+    <div class="pg-actions"><button class="btn btn-l btn-s" onclick="oQuickTask()">+ Quick Task</button></div>
+  </div>
+  <div class="g4" style="margin-bottom:18px">
+    <div class="stat hi"><div class="stat-v" style="color:var(--lime)">${P?.points||0}</div><div class="stat-l">My Points</div><div class="stat-ico">⭐</div></div>
+    <div class="stat" id="edash-status"><div class="stat-v" style="font-size:16px">—</div><div class="stat-l">Current Status</div></div>
+    <div class="stat" id="edash-lv"><div class="stat-v" style="color:var(--blue)">—</div><div class="stat-l">Leave Balance</div><div class="stat-ico">🌿</div></div>
+    <div class="stat" id="edash-tasks"><div class="stat-v" style="color:var(--green)">—</div><div class="stat-l">Tasks Assigned</div><div class="stat-ico">✓</div></div>
+  </div>
+  <div class="g2">
+    <div class="clock-wgt">
+      <div class="ctime" id="eclock">00:00:00</div>
+      <div class="cdate" id="edate"></div>
+      <div class="cstatus" id="ecstatus" style="color:var(--t3)">NOT CLOCKED IN</div>
+      <div class="cacts">
+        <button class="btn btn-l" onclick="doClock('clockIn')">⏱ Clock In</button>
+        <button class="btn btn-g" onclick="doClock('clockOut')">⏹ Clock Out</button>
+        <button class="btn btn-g" onclick="doClock('breakStart')">☕ Break</button>
+        <button class="btn btn-g" onclick="doClock('breakEnd')">▶ Resume</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Today's Tasks</span><span onclick="nav('e-tasks')" style="font-size:11px;color:var(--lime);cursor:pointer">View all →</span></div>
+      <div id="edash-task-list"><div class="ld"><div class="spin"></div></div></div>
+    </div>
+  </div>`;
+  startEmpClock();loadEmpDashData();
+}
+function startEmpClock(){
+  const tick=()=>{
+    const ec=$('eclock');if(!ec)return;
+    const now=new Date();
+    $('eclock').textContent=now.toLocaleTimeString('en-IN',{hour12:false});
+    $('edate').textContent=now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+    setTimeout(tick,1000);
+  };tick();
+}
+async function loadEmpDashData(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const[{data:att},{data:lb},{data:tasks}]=await Promise.all([
+    db.from('attendance_records').select('*').eq('user_id',U.id).gte('timestamp',today.getTime()).order('timestamp',{ascending:false}),
+    db.from('leave_balances').select('*').eq('user_id',U.id).eq('year',new Date().getFullYear()).single(),
+    db.from('tasks').select('*').or(`assigned_to.eq.${U.id},assigned_to.is.null`).limit(6)
+  ]);
+  const latestType=att?.[0]?.type;
+  const stMap={clockIn:'ONLINE',clockOut:'OFFLINE',breakStart:'ON BREAK',breakEnd:'ONLINE'};
+  const stColor={clockIn:'var(--green)',clockOut:'var(--t2)',breakStart:'var(--orange)',breakEnd:'var(--green)'};
+  const cst=$('ecstatus');
+  if(cst){cst.textContent=stMap[latestType]||'NOT CLOCKED IN';cst.style.color=stColor[latestType]||'var(--t4)'}
+  const es=$('edash-status');
+  if(es){const v=es.querySelector('.stat-v');if(v){v.textContent=stMap[latestType]||'OFFLINE';v.style.color=stColor[latestType]||'var(--t2)'}}
+  const lvEl=$('edash-lv');
+  if(lvEl){const v=lvEl.querySelector('.stat-v');if(v)v.textContent=lb.data?lb.data.total_leaves-(lb.data.used_leaves||0)-(lb.data.pending_leaves||0):'—'}
+  const tEl=$('edash-tasks');if(tEl){const v=tEl.querySelector('.stat-v');if(v)v.textContent=tasks.data?.length||0}
+  const tl=$('edash-task-list');
+  if(tl){
+    if(!tasks.data?.length){empty(tl,'No tasks today','✓');return}
+    const pc={Low:'bk',Medium:'bb',High:'bo',Urgent:'br'};
+    tl.innerHTML=tasks.data.map(t=>`<div class="act-item"><div class="act-dot ${t.priority==='Urgent'?'r':t.priority==='High'?'o':'b'}"></div><div class="act-c"><div class="act-t">${t.title}<span class="b ${pc[t.priority]||'bk'}" style="margin-left:6px">${t.priority||'—'}</span></div></div></div>`).join('');
+  }
+}
+async function doClock(type){
+  const moodTypes=['clockIn','breakEnd'];
+  let mood=null;
+  if(moodTypes.includes(type)){const m=prompt('Mood check-in: How are you? (1=low, 5=great)');mood=m?Math.min(5,Math.max(1,parseInt(m)||3)):null}
+  const{error}=await db.from('attendance_records').insert({user_id:U.id,type,timestamp:Date.now(),mood});
+  if(error){toast('Failed: '+error.message,'er');return}
+  const lbl={clockIn:'Clocked in ✓',clockOut:'Clocked out',breakStart:'Break started',breakEnd:'Break ended'};
+  toast(lbl[type]||type,'ok');loadEmpDashData();
+}
+
+/* ════════════════════════════════════════════════════
+   EMPLOYEE: ATTENDANCE
+   ════════════════════════════════════════════════════ */
+async function pgEmpAttend(c){
+  c.innerHTML=`
+  <div class="pg-hd"><div class="pg-t">My Attendance</div><div class="pg-d">Your personal time tracking records</div></div>
+  <div class="g4" id="eatt-stats" style="margin-bottom:18px">${[1,2,3,4].map(()=>'<div class="stat"><div class="spin" style="margin:auto"></div></div>').join('')}</div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch">
+        <span class="ct">Attendance Calendar</span>
+        <div style="display:flex;align-items:center;gap:7px">
+          <button class="bic" onclick="chMonth(-1)">‹</button>
+          <span id="cal-lbl" style="font-family:var(--font-m);font-size:11px;min-width:110px;text-align:center"></span>
+          <button class="bic" onclick="chMonth(1)">›</button>
+        </div>
+      </div>
+      <div id="emp-cal"></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Recent Records</span></div>
+      <div id="eatt-recs" style="max-height:360px;overflow-y:auto"></div>
+    </div>
+  </div>`;
+  window.calM=new Date().getMonth();window.calY=new Date().getFullYear();
+  loadEmpAtt();
+}
+async function loadEmpAtt(){
+  const{data:recs}=await db.from('attendance_records').select('*').eq('user_id',U.id).order('timestamp',{ascending:false});
+  const all=recs||[];
+  const today=new Date();today.setHours(0,0,0,0);
+  const mStart=new Date(today.getFullYear(),today.getMonth(),1).getTime();
+  const mRecs=all.filter(r=>r.timestamp>=mStart);
+  const daysPresent=new Set(mRecs.filter(r=>r.type==='clockIn').map(r=>new Date(r.timestamp).toDateString())).size;
+  const totalH=calcHours(mRecs);
+  const stEl=$('eatt-stats');
+  if(stEl)stEl.innerHTML=`
+    <div class="stat hi"><div class="stat-v" style="color:var(--lime)">${daysPresent}</div><div class="stat-l">Days Present</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--green)">${totalH.toFixed(1)}</div><div class="stat-l">Hours This Month</div></div>
+    <div class="stat"><div class="stat-v">${daysPresent>0?(totalH/daysPresent).toFixed(1):'0'}</div><div class="stat-l">Avg Hours/Day</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--blue)">${calcStreak(all)}</div><div class="stat-l">Day Streak</div></div>`;
+  renderCal(all);
+  const rr=$('eatt-recs');
+  if(rr){
+    const tb={clockIn:'bg',clockOut:'br',breakStart:'bo',breakEnd:'bb'};
+    rr.innerHTML=all.slice(0,20).map(r=>`<div class="act-item"><div class="act-dot ${r.type==='clockIn'?'g':r.type==='clockOut'?'r':r.type==='breakStart'?'o':'b'}"></div><div class="act-c"><div class="act-t"><span class="b ${tb[r.type]||'bk'}">${r.type}</span>${r.mood?` <span style="font-family:var(--font-m);font-size:10px;color:var(--lime)">Mood ${r.mood}/5</span>`:''}</div><div class="act-ts">${fmtDT(r.timestamp)}</div></div></div>`).join('')||`<div class="empty"><div class="empty-t">No records yet</div></div>`;
+  }
+}
+function calcHours(recs){
+  let t=0;let last=null;const s=[...recs].sort((a,b)=>a.timestamp-b.timestamp);
+  s.forEach(r=>{if(r.type==='clockIn'||r.type==='breakEnd')last=r.timestamp;else if((r.type==='clockOut'||r.type==='breakStart')&&last){t+=(r.timestamp-last)/3600000;last=null}});
+  return t;
+}
+function renderCal(recs){
+  const el=$('emp-cal');if(!el)return;
+  const m=window.calM,y=window.calY;
+  const lbl=$('cal-lbl');if(lbl)lbl.textContent=new Date(y,m).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInM=new Date(y,m+1,0).getDate();
+  const pres=new Set(recs.filter(r=>r.type==='clockIn'&&new Date(r.timestamp).getMonth()===m&&new Date(r.timestamp).getFullYear()===y).map(r=>new Date(r.timestamp).getDate()));
+  const today=new Date();
+  let html=`<div class="cal-hdr">${['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dn">${d}</div>`).join('')}</div><div class="cal-grid">`;
+  for(let i=0;i<firstDay;i++)html+=`<div class="cal-cell emp"></div>`;
+  for(let d=1;d<=daysInM;d++){
+    const isT=d===today.getDate()&&m===today.getMonth()&&y===today.getFullYear();
+    const isPast=new Date(y,m,d)<today&&!isT;
+    const cls=isT?'today':pres.has(d)?'pres':isPast?'abs':'';
+    html+=`<div class="cal-cell ${cls}">${d}</div>`;
+  }
+  html+=`</div><div style="display:flex;gap:10px;margin-top:10px;font-size:10px;color:var(--t3);flex-wrap:wrap">
+    <span style="display:flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:2px;background:rgba(0,217,126,.3);display:inline-block"></span>Present</span>
+    <span style="display:flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:2px;background:rgba(255,68,85,.12);display:inline-block"></span>Absent</span>
+    <span style="display:flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:2px;border:1px solid var(--lime);display:inline-block"></span>Today</span>
+  </div>`;
+  el.innerHTML=html;
+}
+function chMonth(delta){
+  window.calM+=delta;
+  if(window.calM>11){window.calM=0;window.calY++}
+  if(window.calM<0){window.calM=11;window.calY--}
+  db.from('attendance_records').select('*').eq('user_id',U.id).then(({data})=>renderCal(data||[]));
+}
+
+/* ════════════════════════════════════════════════════
+   EMPLOYEE: TASKS
+   ════════════════════════════════════════════════════ */
+async function pgEmpTasks(c){
+  c.innerHTML=`
+  <div class="pg-hd">
+    <div><div class="pg-t">My Tasks</div><div class="pg-d">Your assigned daily, hourly and monthly tasks</div></div>
+    <div class="pg-actions"><button class="btn btn-l" onclick="oQuickTask()">+ Add Task</button></div>
+  </div>
+  <div class="tabs">
+    <div class="tab on" onclick="swEmpTask(this,'et-daily')">Daily Tasks</div>
+    <div class="tab" onclick="swEmpTask(this,'et-hourly')">Hourly Tasks</div>
+    <div class="tab" onclick="swEmpTask(this,'et-monthly')">Monthly Tasks</div>
+    <div class="tab" onclick="swEmpTask(this,'et-personal')">Personal Tasks</div>
+  </div>
+  <div class="tp on" id="et-daily"><div class="ld"><div class="spin"></div></div></div>
+  <div class="tp" id="et-hourly"></div>
+  <div class="tp" id="et-monthly"></div>
+  <div class="tp" id="et-personal"></div>`;
+  loadEmpTaskPanel('daily');
+}
+async function loadEmpTaskPanel(type){
+  if(type==='daily'){
+    const{data}=await db.from('tasks').select('*').or(`assigned_to.eq.${U.id},assigned_to.is.null`).eq('task_type','daily').order('created_at',{ascending:false});
+    renderEmpTaskList($('et-daily'),data,'daily');
+  } else if(type==='hourly'){
+    const{data}=await db.from('tasks').select('*').or(`assigned_to.eq.${U.id},assigned_to.is.null`).eq('task_type','hourly').order('created_at',{ascending:false});
+    renderEmpTaskList($('et-hourly'),data,'hourly');
+  } else if(type==='personal'){
+    const{data}=await db.from('tasks').select('*').eq('assigned_to',U.id).eq('task_type','personal').order('created_at',{ascending:false});
+    const panel=$('et-personal');
+    if(!data?.length){
+      panel.innerHTML=`<div class="empty"><div class="empty-i">📝</div><div class="empty-t">No personal tasks yet — hit + Add Task to create one!</div></div>`;
+      return;
+    }
+    const pc={Low:'bk',Medium:'bb',High:'bo',Urgent:'br'};
+    panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(t=>`<div class="tcard" style="display:flex;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div class="tc-t">${t.title}</div>
+        <div class="tc-m">
+          <span class="b ${pc[t.priority]||'bk'}">${t.priority||'Medium'}</span>
+          <span class="b bk">Personal</span>
+          ${t.specific_date?`<span style="font-family:var(--font-m);font-size:10px">📅 ${fmt(t.specific_date)}</span>`:''}
+          ${t.deadline_time?`<span style="font-family:var(--font-m);font-size:10px">⏰ ${t.deadline_time}</span>`:''}
+        </div>
+        ${t.description?`<div style="font-size:12px;color:var(--t2)">${t.description}</div>`:''}
+      </div>
+      <button class="bic" style="color:var(--red);flex-shrink:0" onclick="deletePersonalTask('${t.id}')">🗑</button>
+    </div>`).join('')}`;
+  } else {
+    const{data}=await db.from('user_monthly_tasks').select('*, monthly_tasks(*)').eq('user_id',U.id).order('created_at',{ascending:false});
+    renderEmpMonthlyList($('et-monthly'),data);
+  }
+}
+function renderEmpTaskList(panel,data,type){
+  if(!data?.length){empty(panel,`No ${type} tasks assigned`,'✓');return}
+  const pc={Low:'bk',Medium:'bb',High:'bo',Urgent:'br'};
+  const ac={accepted:'bg',rejected:'br',pending:'bo'};
+  panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(t=>`<div class="tcard">
+    <div class="tc-t">${t.title}</div>
+    <div class="tc-m">
+      <span class="b ${pc[t.priority]||'bk'}">${t.priority||'Medium'}</span>
+      <span class="b bl">${t.task_type}</span>
+      ${t.deadline_time?`<span style="font-family:var(--font-m);font-size:10px">⏰ ${t.deadline_time}</span>`:''}
+      ${t.specific_date?`<span style="font-family:var(--font-m);font-size:10px">📅 ${fmt(t.specific_date)}</span>`:''}
+      ${t.time_start?`<span style="font-family:var(--font-m);font-size:10px">${t.time_start}${t.deadline_time?` → ${t.deadline_time}`:''}</span>`:''}
+      <span class="b ${ac[t.admin_assessment]||'bo'}">${t.admin_assessment||'pending review'}</span>
+    </div>
+    ${t.description?`<div style="font-size:12px;color:var(--t2);margin-bottom:8px">${t.description}</div>`:''}
+  </div>`).join('')}`;
+}
+function renderEmpMonthlyList(panel,data){
+  if(!data?.length){empty(panel,'No monthly tasks assigned','📋');return}
+  const sc={Completed:'bg','In Progress':'bb',Pending:'bo','On Hold':'bk',Review:'bp'};
+  panel.innerHTML=`<div style="display:grid;gap:10px">${data.map(ut=>{
+    const t=ut.monthly_tasks;
+    return`<div class="tcard">
+      <div class="tc-t">${t?.title||'Task'}</div>
+      <div class="tc-m">
+        <span class="b ${sc[ut.status]||'bk'}">${ut.status||'Pending'}</span>
+        ${ut.started_at?`<span style="font-family:var(--font-m);font-size:10px">▶ ${fmtDT(ut.started_at)}</span>`:''}
+        ${ut.completed_at?`<span style="font-family:var(--font-m);font-size:10px">✓ ${fmtDT(ut.completed_at)}</span>`:''}
+      </div>
+      <div class="tc-acts">
+        ${ut.status==='Pending'?`<button class="btn btn-g btn-s" onclick="startMonTask('${ut.id}')">▶ Start</button>`:''}
+        ${ut.status==='In Progress'?`<button class="btn btn-ok btn-s" onclick="complMonTask('${ut.id}')">✓ Mark Complete</button>`:''}
+        ${ut.admin_assessment&&ut.admin_assessment!=='pending'?`<span class="b ${ut.admin_assessment==='accepted'?'bg':'br'}">${ut.admin_assessment==='accepted'?'✓ Accepted':'✕ Rejected'}</span>`:''}
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+async function startMonTask(id){
+  await db.from('user_monthly_tasks').update({status:'In Progress',started_at:new Date().toISOString()}).eq('id',id);
+  toast('Task started','ok');loadEmpTaskPanel('monthly');
+}
+async function complMonTask(id){
+  await db.from('user_monthly_tasks').update({status:'Completed',completed_at:new Date().toISOString()}).eq('id',id);
+  toast('Submitted for review!','ok');loadEmpTaskPanel('monthly');
+}
+async function deletePersonalTask(id){
+  if(!confirm('Delete this task?'))return;
+  await db.from('tasks').delete().eq('id',id).eq('assigned_to',U.id);
+  toast('Task deleted','ok');loadEmpTaskPanel('personal');
+}
+function swEmpTask(el,pid){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  document.querySelectorAll('#pg-wrap .tp').forEach(p=>p.classList.remove('on'));
+  const panel=$(pid);if(panel)panel.classList.add('on');
+  if(pid==='et-hourly'&&(!panel.innerHTML.trim()||panel.querySelector('.spin')))loadEmpTaskPanel('hourly');
+  if(pid==='et-monthly'&&(!panel.innerHTML.trim()||panel.querySelector('.spin')))loadEmpTaskPanel('monthly');
+  if(pid==='et-personal'&&(!panel.innerHTML.trim()||panel.querySelector('.spin')))loadEmpTaskPanel('personal');
+}
+
+/* ════════════════════════════════════════════════════
+   EMPLOYEE: LEAVES
+   ════════════════════════════════════════════════════ */
+async function pgEmpLeaves(c){
+  c.innerHTML=`
+  <div class="pg-hd"><div class="pg-t">Leave Management</div><div class="pg-d">Apply for and track your leave requests</div></div>
+  <div class="g4" style="margin-bottom:18px" id="lv-bal-cards">${[1,2,3,4].map(()=>'<div class="stat"><div class="spin" style="margin:auto"></div></div>').join('')}</div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><span class="ct">Apply for Leave</span></div>
+      <div class="fg"><label>Leave Type</label><select id="lt-tp"><option>Annual</option><option>Sick</option><option>Casual</option><option>Emergency</option><option>Unpaid</option></select></div>
+      <div class="fr"><div class="fg"><label>From Date</label><input type="date" id="lt-fr"></div><div class="fg"><label>To Date</label><input type="date" id="lt-to"></div></div>
+      <div class="fg"><label>Reason</label><textarea id="lt-rs" placeholder="Brief reason for your leave…"></textarea></div>
+      <button class="btn btn-l" onclick="applyLeave()">Submit Request</button>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Leave History</span></div>
+      <div id="lv-hist"><div class="ld"><div class="spin"></div></div></div>
+    </div>
+  </div>`;
+  loadEmpLeaves();
+}
+async function loadEmpLeaves(){
+  const[{data:bal},{data:hist}]=await Promise.all([
+    db.from('leave_balances').select('*').eq('user_id',U.id).eq('year',new Date().getFullYear()).single(),
+    db.from('leave_requests').select('*').eq('user_id',U.id).order('created_at',{ascending:false})
+  ]);
+  const b=bal;
+  const avail=b?b.total_leaves-(b.used_leaves||0)-(b.pending_leaves||0):0;
+  const bc=$('lv-bal-cards');
+  if(bc)bc.innerHTML=`
+    <div class="stat hi"><div class="stat-v" style="color:var(--lime)">${b?.total_leaves||0}</div><div class="stat-l">Total Leaves</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--green)">${avail}</div><div class="stat-l">Available</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--red)">${b?.used_leaves||0}</div><div class="stat-l">Used</div></div>
+    <div class="stat"><div class="stat-v" style="color:var(--orange)">${b?.pending_leaves||0}</div><div class="stat-l">Pending</div></div>`;
+  const lh=$('lv-hist');
+  if(!hist?.length){empty(lh,'No leave requests yet','🌿');return}
+  const sc={Pending:'bo',Approved:'bg',Rejected:'br'};
+  lh.innerHTML=hist.map(r=>`<div class="act-item">
+    <div class="act-dot ${r.status==='Approved'?'g':r.status==='Rejected'?'r':'o'}"></div>
+    <div class="act-c">
+      <div class="act-t" style="display:flex;align-items:center;gap:7px">${r.leave_type}<span class="b ${sc[r.status]||'bk'}">${r.status}</span></div>
+      <div class="act-ts">${fmt(r.start_date)} → ${fmt(r.end_date)}</div>
+      ${r.admin_comment?`<div style="font-size:10px;color:var(--t3);margin-top:2px">${r.admin_comment}</div>`:''}
+    </div>
+  </div>`).join('');
+}
+async function applyLeave(){
+  const req={user_id:U.id,leave_type:$('lt-tp').value,start_date:$('lt-fr').value,end_date:$('lt-to').value,reason:$('lt-rs').value,status:'Pending'};
+  if(!req.start_date||!req.end_date){toast('Select dates','er');return}
+  const{error}=await db.from('leave_requests').insert(req);
+  if(error){toast('Failed: '+error.message,'er');return}
+  toast('Leave request submitted!','ok');$('lt-fr').value='';$('lt-to').value='';$('lt-rs').value='';loadEmpLeaves();
+}
+
+/* ════════════════════════════════════════════════════
+   PROFILE (shared)
+   ════════════════════════════════════════════════════ */
+async function pgProfile(c){
+  const p=P;
+  c.innerHTML=`
+  <div class="prof-hero">
+    <div class="prof-av">${p?.avatar_url?`<img src="${p.avatar_url}" alt="">`:ini(p?.name||p?.email||'?')}</div>
+    <div>
+      <div style="font-family:var(--font-h);font-size:22px;font-weight:800;margin-bottom:3px">${p?.name||'Your Name'}</div>
+      <div style="font-family:var(--font-m);font-size:11px;color:var(--lime);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${ROLE} · ${p?.department||'—'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${p?.email?`<span class="b bk">✉ ${p.email}</span>`:''}
+        ${p?.phone?`<span class="b bk">📱 ${p.phone}</span>`:''}
+        ${p?.points!=null?`<span class="b bl">⭐ ${p.points} pts</span>`:''}
+        ${p?.tasks_completed?`<span class="b bg">✓ ${p.tasks_completed} tasks</span>`:''}
+      </div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><span class="ct">Edit Profile</span></div>
+      <div class="fg"><label>Full Name</label><input id="pn" value="${p?.name||''}"></div>
+      <div class="fg"><label>Phone</label><input id="pp" value="${p?.phone||''}"></div>
+      <div class="fg"><label>Birthday</label><input type="date" id="pb" value="${p?.birthday||''}"></div>
+      <div class="fg"><label>Bio</label><textarea id="pbi">${p?.bio||''}</textarea></div>
+      <div class="fg"><label>Avatar URL</label><input type="url" id="pa" value="${p?.avatar_url||''}" placeholder="https://…"></div>
+      <button class="btn btn-l" onclick="saveProfile()">Save Changes</button>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">My Stats</span></div>
+      <div class="kv"><span class="kv-l">Member Since</span><span class="kv-v">${fmt(p?.joining_date)}</span></div>
+      <div class="kv"><span class="kv-l">Total Points</span><span class="kv-v" style="color:var(--lime)">${p?.points||0}</span></div>
+      <div class="kv"><span class="kv-l">Tasks Completed</span><span class="kv-v">${p?.tasks_completed||0}</span></div>
+      <div class="kv"><span class="kv-l">Department</span><span class="kv-v">${p?.department||'—'}</span></div>
+      <div class="kv"><span class="kv-l">Status</span><span class="b ${p?.status==='active'?'bg':'bk'}">${p?.status||'active'}</span></div>
+    </div>
+  </div>`;
+}
+async function saveProfile(){
+  const u={name:$('pn').value,phone:$('pp').value,birthday:$('pb').value||null,bio:$('pbi').value,avatar_url:$('pa').value};
+  const{error}=await db.from('profiles').update(u).eq('id',U.id);
+  if(error){toast('Failed: '+error.message,'er');return}
+  P={...P,...u};toast('Profile saved','ok');updateSbUser();pgProfile($('pg-wrap'));
+}
+</script>
+</body>
 </html>
