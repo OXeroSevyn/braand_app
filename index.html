@@ -322,8 +322,20 @@ a{color:inherit;text-decoration:none}
 .cw-sm{position:relative;height:150px}
 .cw-md{position:relative;height:250px}
 
-
-/* ══════════════════════════ CLOCK WIDGET ════════════════════ */
+/* ══════════════════════════ KANBAN ══════════════════════════ */
+.kanban-board { display: grid; grid-template-columns: repeat(4, 1fr); gap:15px; margin-top:15px; align-items: flex-start; }
+.kb-col { background: var(--s2); border: 1px solid var(--border); border-radius: var(--rl); min-height: 500px; display: flex; flex-direction: column; }
+.kb-h { padding: 12px 15px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.kb-cnt { padding: 10px; flex: 1; min-height: 100px; }
+.kb-card { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: grab; transition: transform 0.1s, box-shadow 0.1s; position: relative; }
+.kb-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--lime); }
+.kb-card.dragging { opacity: 0.5; cursor: grabbing; }
+.kb-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+.kb-meta { font-size: 11px; color: var(--t3); display: flex; flex-direction: column; gap: 3px; }
+.kb-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; width: fit-content; text-transform: uppercase; }
+.kb-drop-over { background: var(--s3); border: 2px dashed var(--lime); }
+@media (max-width: 1024px) { .kanban-board { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .kanban-board { grid-template-columns: 1fr; } }
 .clock-wgt{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:22px;text-align:center}
 .ctime{font-family:var(--font-m);font-size:38px;font-weight:600;color:var(--lime);letter-spacing:2px;margin-bottom:3px}
 .cdate{font-size:11px;color:var(--t2);margin-bottom:16px}
@@ -1274,90 +1286,92 @@ async function loadTracker(panel){
     db.from('profiles').select('id,name,email')
   ]);
   const [{data:m},{data:mt},{data:d}, {data:profs}] = res;
-  
   const pm = {}; (profs||[]).forEach(p=>pm[p.id]=p);
   const mm = {}; (m||[]).forEach(x=>mm[x.id]=x);
 
-  const now=Date.now();
   const allTasks=[];
-  (mt||[]).forEach(t=>allTasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time || null, date:null}));
-  (d||[]).forEach(t=>allTasks.push({...t,type:'TASK', profiles: pm[t.user_id], deadline:t.end_time || null, date:t.task_date}));
+  (mt||[]).forEach(t=>allTasks.push({...t,type:'Monthly',title:mm[t.monthly_task_id]?.title, profiles: pm[t.user_id], deadline:t.deadline_time || null}));
+  (d||[]).forEach(t=>allTasks.push({...t,type:'TASK', profiles: pm[t.user_id], deadline:t.end_time || null}));
 
-  const renderTracker=(search='')=>{
+  const renderKanban=(search='')=>{
     const s=search.toLowerCase();
-    const tasks = allTasks.filter(t=>{
-      const txt = (t.title||'') + (t.profiles?.name||'') + (t.profiles?.email||'');
-      return !s || txt.toLowerCase().includes(s);
-    });
+    const tasks = allTasks.filter(t=> !s || ((t.title||'')+(t.profiles?.name||'')).toLowerCase().includes(s));
+    const now = Date.now();
 
-    const overdue=[];
-    const ongoing=[];
-    const pending=[];
-    const completed=[];
-
-    tasks.forEach(t=>{
-      if(t.admin_assessment==='accepted') { completed.push(t); return; }
-      
-      let isOverdue=false;
-      if(t.date || t.deadline){
-        let dt=t.date?new Date(t.date):new Date();
-        if(t.deadline){
-          const[h,m_time]=t.deadline.split(':');
-          dt.setHours(parseInt(h)||0,parseInt(m_time)||0,0,0);
-        } else {
-          dt.setHours(23,59,59,999);
-        }
-        if(dt.getTime()<now) isOverdue=true;
-      }
-
-      if(isOverdue) overdue.push(t);
-      else if(t.status==='In Progress' || t.admin_assessment==='Review' || t.admin_assessment==='pending review') ongoing.push(t);
-      else pending.push(t);
-    });
-
-    const isPast=(x)=>{
-      if(!x.date && !x.deadline) return false;
-      let dt=x.date?new Date(x.date):new Date();
-      if(x.deadline) { const[h,min]=x.deadline.split(':'); dt.setHours(parseInt(h),parseInt(min)); }
-      else dt.setHours(23,59);
-      return dt.getTime()<now;
+    const cols = {
+      todo: {t:'To Do', c:'bk', items:[]},
+      progress: {t:'In Progress', c:'blue', items:[]},
+      review: {t:'Review', c:'orange', items:[]},
+      done: {t:'Done', c:'green', items:[]}
     };
 
-    const renderSec=(list,title,color,isOpen=false)=>`
-      <details class="tracker-sec" ${isOpen?'open':''}>
-        <summary class="ch" style="margin-top:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-          <span class="ct" style="color:var(--${color})">${title} (${list.length})</span>
-          <span class="bic" style="font-size:12px">▼</span>
-        </summary>
-        <div style="display:grid;gap:8px;padding:8px 0">
-          ${list.length?list.slice(0,100).map(x=>`<div class="tcard" style="border-left:3px solid var(--${color})">
-            <div class="tc-t">${x.title || 'Untitled Task'}</div>
-            <div class="tc-m">
-              <span class="b bl">${x.type}</span>
-              <span>👤 ${x.profiles?.name||'Everyone'}</span>
-              ${x.deadline?`<span style="color:var(--${isPast(x)?'red':'t3'})">⏰ ${x.deadline}</span>`:''}
-              ${x.date?`<span style="color:var(--${isPast(x)?'red':'t3'})">📅 ${fmt(x.date)}</span>`:''}
-            </div>
-          </div>`).join('')+(list.length>100?`<div class="empty-t" style="text-align:center;padding:10px;opacity:.6">Showing first 100 items... Use search to find specific tasks.</div>`:''):`<div style="font-size:11px;color:var(--t3);padding:10px;text-align:center">No tasks in this category</div>`}
-        </div>
-      </details>`;
+    tasks.forEach(t=>{
+      if(t.admin_assessment==='accepted'||t.status==='Completed') cols.done.items.push(t);
+      else if(t.admin_assessment==='Review'||t.status==='Review') cols.review.items.push(t);
+      else if(t.status==='In Progress') cols.progress.items.push(t);
+      else cols.todo.items.push(t);
+    });
 
-    const grid = $('tracker-grid');
-    if(grid) grid.innerHTML = `
-      ${renderSec(overdue,'Overdue Tasks','red', overdue.length>0)}
-      ${renderSec(ongoing,'Ongoing Activity','blue', overdue.length===0 && ongoing.length>0)}
-      ${renderSec(pending,'Upcoming / Pending','bk', overdue.length===0 && ongoing.length===0)}
-      ${renderSec(completed,'Completed Tasks','green')}
-    `;
+    const board = document.getElementById('kanban-board');
+    if(!board)return;
+    board.innerHTML = Object.entries(cols).map(([id, col])=>`
+      <div class="kb-col" ondragover="event.preventDefault(); this.classList.add('kb-drop-over')" ondragleave="this.classList.remove('kb-drop-over')" ondrop="handleKbDrop(event, '${id}')">
+        <div class="kb-h"><span>${col.t}</span><span class="b ${col.c}">${col.items.length}</span></div>
+        <div class="kb-cnt" id="col-${id}">
+          ${col.items.map(x=>{
+            const isOverdue = x.deadline && new Date().toTimeString() > x.deadline && x.status!=='Completed';
+            return `<div class="kb-card" draggable="true" ondragstart="handleKbDragStart(event, '${x.id}', '${x.type}')" id="card-${x.id}">
+              <div class="kb-title">${x.title || 'Untitled'}</div>
+              <div class="kb-meta">
+                <span class="kb-tag bl">${x.type}</span>
+                <span>👤 ${x.profiles?.name || 'Everyone'}</span>
+                ${x.deadline ? `<span style="color:${isOverdue?'var(--red)':'var(--t3)'}">⏰ ${x.deadline}</span>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`).join('');
   };
 
   panel.innerHTML=`
     <div style="margin-bottom:15px;display:flex;gap:10px;position:sticky;top:0;background:var(--bg);z-index:5;padding:5px 0">
-      <input type="text" class="si" placeholder="Search tasks or employees..." style="flex:1" oninput="loadTracker.render(this.value)" id="tracker-search">
+      <input type="text" class="si" placeholder="Search Kanban..." style="flex:1" oninput="loadTracker.render(this.value)" id="tracker-search">
     </div>
-    <div id="tracker-grid"></div>`;
-  loadTracker.render = renderTracker;
-  renderTracker();
+    <div class="kanban-board" id="kanban-board"></div>`;
+  loadTracker.render = renderKanban;
+  renderKanban();
+}
+
+let kbDragging={id:null,type:null};
+function handleKbDragStart(e, id, type){
+  kbDragging={id, type};
+  e.dataTransfer.setData('text/plain', id);
+  e.target.classList.add('dragging');
+}
+async function handleKbDrop(e, colId){
+  e.preventDefault();
+  const el = e.currentTarget; el.classList.remove('kb-drop-over');
+  const {id, type} = kbDragging; if(!id) return;
+  
+  const statusMap = {
+    todo: { status: 'Pending', assessment: 'pending' },
+    progress: { status: 'In Progress', assessment: 'pending' },
+    review: { status: 'Review', assessment: 'Review' },
+    done: { status: 'Completed', assessment: 'accepted' }
+  };
+  
+  const target = statusMap[colId];
+  const table = type==='Monthly' ? 'user_monthly_tasks' : 'tasks';
+  const updateData = type==='Monthly' ? { status: target.status } : { admin_assessment: target.assessment };
+  
+  if(target.status==='Completed') updateData.completed_at = new Date().toISOString();
+
+  toast('Updating status...','in');
+  const {error} = await db.from(table).update(updateData).eq('id', id);
+  if(error) { toast('Error: '+error.message, 'er'); return; }
+  
+  toast('Task moved to '+colId, 'ok');
+  loadTracker($('tp-tracker'));
 }
 function renderTaskList(panel,data,table){
   if(!data?.length){empty(panel,'No tasks created','✓');return}
